@@ -63,11 +63,6 @@ class MainWindow(QWidget):
     MIN_WIDTH = 1280
     MIN_HEIGHT = 720
 
-    # TODO: maybe create four button groups that can be easily locked and
-    #  unlocked depending on the group name (or number). Four groups because
-    #  there are four combinations of button states (after initialization,
-    #  after testing session, after fetching jobs, after fetching job
-    #  descriptions)
     def __init__(
         self,
         session: LinkedinSession,
@@ -271,7 +266,8 @@ class MainWindow(QWidget):
 
         current_button_states = self._get_current_button_states()
         self._lock_buttons()
-        # TODO: only filter jobs that are currently displayed?
+        # TODO-4: only filter jobs that are currently displayed instead of
+        #  all jobs?
         df_res = filter_job_titles(self.df, *filter_lists)
         self.job_table.display_jobs(df_res)
         self._change_button_states(current_button_states)

@@ -94,7 +94,7 @@ class LinkedinSession:
         self._l.info("Testing session")
         self.get_html(C.URL_TEST_CONNECTION)
 
-    # TODO: maybe use/create a task decorator that can execute this method
+    # TODO-3: maybe use/create a task decorator that can execute this method
     #  several times depending (with exponential backoff) on the raised
     #  exceptions
     def get_html(
@@ -194,7 +194,7 @@ class LinkedinJobScraper:
         if self._n_jobs_per_page is None:
             self._l.debug("Determining the number of jobs per page")
             html = self._get_job_page(C.URL_TEST_CONNECTION)
-            # TODO: is there a better way of determining this?
+            # TODO-2: is there a better way of determining this?
             if str(html).startswith("<!DOCTYPE html>"):
                 self._n_jobs_per_page = 10
             else:
@@ -421,6 +421,7 @@ class LinkedinJobScraper:
         descr = html.find("div", {"class": "show-more-less-html__markup"})
         return descr
 
+    # TODO-1
     def get_job_descriptions(
         self, df: DataFrame, index_filter: Optional[pandas.Index] = None
     ) -> DataFrame:
@@ -428,9 +429,6 @@ class LinkedinJobScraper:
 
         Optionally can pass an index filter to select jobs of which to fetch the
         descriptions.
-        TODO: Is this the best way? Ideally this method should just accept a
-          dataframe, but not sure how to set it to the original dataframe
-          otherwise
 
         Adds two columns to the dataframe:
             - description_html: job description in HTML format
@@ -511,6 +509,7 @@ class LinkedinJobScraper:
         return html.text.strip() if html is not None else html
 
 
+# TODO-1
 def filter_job_titles(
     df: DataFrame,
     keywords_always_keep: Optional[Iterable[str]] = None,
@@ -526,9 +525,6 @@ def filter_job_titles(
 
     Optionally can pass an index filter to select jobs of which to check the
     titles.
-    TODO: Is this the best way? Ideally this method should just accept a
-      dataframe, but not sure how to set it to the original dataframe
-      otherwise
 
     Parameters
     ----------
@@ -600,6 +596,7 @@ def filter_job_titles(
     return df[df[C.KEY_KEEP_JOB_AFTER_TITLE_FILTER]]
 
 
+# TODO-1
 def filter_job_descriptions(
     df: DataFrame, keyword: str, index_filter: Optional[pandas.Index] = None
 ) -> DataFrame:
@@ -610,9 +607,6 @@ def filter_job_descriptions(
 
     Optionally can pass an index filter to select jobs of which to check the
     titles.
-    TODO: Is this the best way? Ideally this method should just accept a
-      dataframe, but not sure how to set it to the original dataframe
-      otherwise
 
     Parameters
     ----------
