@@ -67,9 +67,19 @@ class MainWindow(QWidget):
         self,
         session: LinkedinSession,
         scraper: LinkedinJobScraper,
+        save_folder: str,
         *args,
         **kwargs,
     ):
+        """
+
+        Parameters
+        ----------
+        session : LinkedinSession
+        scraper : LinkedinJobScraper
+        save_folder : str
+            Folder to save the results in.
+        """
         super().__init__(*args, **kwargs)
 
         self.session = session
@@ -318,7 +328,9 @@ class MainWindow(QWidget):
         """
         current_indices = self.job_table.get_current_dataframe_indices()
         save_job_dataframe_to_html_file(
-            self.df.loc[current_indices, :], self.metadata
+            self.df.loc[current_indices, :],
+            self.metadata,
+            folder=self.save_folder,
         )
         QMessageBox.information(self, "Saving", "Saving is completed")
 
@@ -750,7 +762,7 @@ def main() -> None:
     """Main app initialization and main loop."""
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
-    widget = MainWindow(session, scraper)
+    widget = MainWindow(session, scraper, "../results")
     widget.show()
     app.exec_()
 

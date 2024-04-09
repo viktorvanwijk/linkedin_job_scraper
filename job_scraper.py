@@ -706,6 +706,7 @@ def save_job_dataframe_to_html_file(
         '[date]_[search_keyword]_wl=[work_location].html'
     folder : str
         Folder to save the results in. Will be created if it doesn't exist.
+        Default is a `results` folder in the current working directory.
 
     Raises
     ------
