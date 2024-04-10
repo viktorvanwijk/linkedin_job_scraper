@@ -16,8 +16,7 @@ import pandas
 from bs4 import BeautifulSoup
 from pandas import DataFrame
 from requests import Session
-from requests.exceptions import ConnectionError as ConnectionErrorReq
-from requests.exceptions import HTTPError, Timeout
+from requests.exceptions import RequestException
 
 import constants as C
 from logger import logger
@@ -133,7 +132,7 @@ class LinkedinSession:
 
             try:
                 res = self.session.get(url, headers=headers, **kwargs)
-            except (ConnectionErrorReq, HTTPError, Timeout, SystemError) as e:
+            except (RequestException, SystemError) as e:
                 self._l.conn(f"Requests error: {repr(e)}. Will try again.")
                 continue
 
