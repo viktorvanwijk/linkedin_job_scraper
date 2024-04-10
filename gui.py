@@ -113,8 +113,8 @@ class MainWindow(QWidget):
         self.description_filter_input.setText("python")
         self.buttons = {
             "test_session": create_button("Test session", True),
-            "get_n_jobs": create_button("Get number of jobs"),
-            "scrape_jobs": create_button("Fetch jobs"),
+            "get_n_jobs": create_button("Get number of jobs", True),
+            "scrape_jobs": create_button("Fetch jobs", True),
             "filter_job_titles": create_button("Filter job titles"),
             "get_job_descriptions": create_button("Fetch job descriptions"),
             "filter_job_descriptions": create_button("Filter job descriptions"),
