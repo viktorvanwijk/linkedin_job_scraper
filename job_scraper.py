@@ -94,8 +94,8 @@ class LinkedinSession:
         self.get_html(C.URL_TEST_CONNECTION)
 
     # TODO-3: maybe use/create a task decorator that can execute this method
-    #  several times depending (with exponential backoff) on the raised
-    #  exceptions
+    #  several times depending on the raised exceptions (and with exponential
+    #  backoff for example)
     def get_html(
         self, url: str, headers: Optional[Dict[str, str]] = None, **kwargs
     ) -> BeautifulSoup:
@@ -270,6 +270,7 @@ class LinkedinJobScraper:
             page += 1
 
         df = DataFrame(job_list)
+        # TODO: should this be here?
         df[C.KEY_HAS_JOB_DESCRIPTION] = False
 
         return df, metadata
