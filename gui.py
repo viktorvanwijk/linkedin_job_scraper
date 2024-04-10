@@ -78,6 +78,7 @@ class MainWindow(QWidget):
         self.setStyleSheet(
             "QPushButton {font: 10pt Times} " "QLabel {font: 10pt Times}"
         )
+        self.setWindowIcon(QIcon(f"{PATH_ICONS}/linkedin-icon-filled-256.png"))
 
         # Left side widgets
         self.settings_groupbox = QGroupBox("Settings")
