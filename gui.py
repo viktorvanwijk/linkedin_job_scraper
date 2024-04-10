@@ -84,6 +84,7 @@ class MainWindow(QWidget):
 
         self.session = session
         self.scraper = scraper
+        self.save_folder = save_folder
 
         self._l = logger.getChild(self.__class__.__name__)
 
