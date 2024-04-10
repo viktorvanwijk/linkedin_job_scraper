@@ -231,7 +231,7 @@ class LinkedinJobScraper:
         Returns
         -------
         df : DataFrame
-            Dataframe where each row represents a jobs.
+            Dataframe where each row represents a job.
         metadata : Dict[str, Any]
             Information about the search query.
         """
