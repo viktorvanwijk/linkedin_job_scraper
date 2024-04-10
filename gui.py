@@ -10,13 +10,12 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 
 import pandas as pd
 from pandas import DataFrame
-from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSignal
+from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt
 from PyQt5.QtGui import QIcon, QKeyEvent
 from PyQt5.QtWidgets import (
-    QAbstractItemView, QApplication, QCheckBox, QFormLayout, QGridLayout,
-    QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox,
-    QPlainTextEdit, QPushButton, QSizePolicy, QSpinBox, QTableView,
-    QVBoxLayout, QWidget)
+    QAbstractItemView, QApplication, QCheckBox, QFormLayout, QGroupBox,
+    QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPlainTextEdit,
+    QPushButton, QSizePolicy, QSpinBox, QTableView, QVBoxLayout, QWidget)
 
 import constants as C
 from job_scraper import (
@@ -77,8 +76,7 @@ class MainWindow(QWidget):
         self.setWindowTitle("LinkedIn Job Scraper")
         self.setMinimumSize(self.MIN_WIDTH, self.MIN_HEIGHT)
         self.setStyleSheet(
-            "QPushButton {font: 10pt Times} "
-            "QLabel {font: 10pt Times}"
+            "QPushButton {font: 10pt Times} " "QLabel {font: 10pt Times}"
         )
 
         # Left side widgets
@@ -451,7 +449,7 @@ class PandasModel(QAbstractTableModel):
         return super().headerData(section, orientation, role)
 
     def removeRows(self, row, count, parent=QModelIndex()):
-        self._l.debug(f"Deleting rows from '{row}' to '{row+count-1}'.")
+        self._l.debug(f"Deleting rows from '{row}' to '{row + count - 1}'.")
         self.beginRemoveRows(parent, row, row + count - 1)
         for _ in range(count):
             self._data.drop(self._data.index[row], inplace=True)
@@ -459,6 +457,15 @@ class PandasModel(QAbstractTableModel):
         self.layoutChanged.emit()
         self._l.debug(f"Dataframe length after deleting: {self._data.shape[0]}")
         return True
+
+    def sort(self, column, order):
+        self._data.sort_values(
+            self._data.columns[column],
+            axis="rows",
+            ascending=True if order == Qt.AscendingOrder else False,
+            inplace=True,
+        )
+        self.layoutChanged.emit()
 
 
 class JobTableViewer(QTableView):
@@ -489,10 +496,12 @@ class JobTableViewer(QTableView):
         # not support arbitrary row selection
         self.setSelectionMode(QAbstractItemView.ContiguousSelection)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
+        self.setSortingEnabled(True)
 
         h_header = self.horizontalHeader()
         v_header = self.verticalHeader()
         h_header.setSectionResizeMode(QHeaderView.ResizeToContents)
+        h_header.setSortIndicatorShown(True)
         v_header.setSectionResizeMode(QHeaderView.ResizeToContents)
 
     def display_jobs(self, df: DataFrame) -> None:
