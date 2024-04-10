@@ -447,7 +447,8 @@ class PandasModel(QAbstractTableModel):
 
     def headerData(self, section, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            return self._data.columns[section]
+            col = self._data.columns[section].replace("_", " ").capitalize()
+            return col
         return super().headerData(section, orientation, role)
 
     def removeRows(self, row, count, parent=QModelIndex()):
