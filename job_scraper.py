@@ -33,7 +33,7 @@ TITLE_KEYWORDS_TO_DISCARD = (
     "java", "php", "c++", "c#", "dotnet", ".net", "plc", "mendix", "oracle",
     "data", "front end", "front-end", "frontend", "golang", "scala", "ruby",
     "powerbi", "rust", "react", "internship", "principal", "typescript",
-    "werktuig", "gis", "angular", "stage", "usd/year"
+    "werktuig", "gis", "angular", "stage", "year usd"
 )
 # fmt: on
 
