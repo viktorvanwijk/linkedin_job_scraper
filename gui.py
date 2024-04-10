@@ -540,7 +540,10 @@ class JobTableViewer(QTableView):
         if e.key() == Qt.Key_Delete:
             self._l.debug("Delete key pressed")
             rows = self.selectionModel().selectedRows()
+            if len(rows) == 0:
+                return
             self.model().removeRows(rows[0].row(), len(rows), rows[0])
+            self.selectionModel().clearSelection()
         super().keyPressEvent(e)
 
 
