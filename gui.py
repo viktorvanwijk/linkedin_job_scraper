@@ -5,6 +5,7 @@ Created on Mon Mar 11 14:16:09 2024
 @author: Hans
 """
 
+import os
 import sys
 from typing import Any, Dict, Iterable, List, Optional, Union
 
@@ -33,7 +34,7 @@ SIZE_MIN_EXPANDING = QSizePolicy.MinimumExpanding
 LABEL_ROLE = QFormLayout.LabelRole
 FIELD_ROLE = QFormLayout.FieldRole
 
-PATH_ICONS = "icons"
+PATH_ICONS = f"{os.path.dirname(__file__)}\\icons"
 
 
 class MainWindow(QWidget):
