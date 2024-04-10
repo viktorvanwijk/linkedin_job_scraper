@@ -11,41 +11,19 @@ from typing import Any, Dict, Iterable, List, Optional, Union
 import pandas as pd
 from pandas import DataFrame
 from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt, pyqtSignal
-from PyQt5.QtGui import QKeyEvent
+from PyQt5.QtGui import QIcon, QKeyEvent
 from PyQt5.QtWidgets import (
-    QAbstractItemView,
-    QApplication,
-    QCheckBox,
-    QFormLayout,
-    QGridLayout,
-    QGroupBox,
-    QHBoxLayout,
-    QHeaderView,
-    QLabel,
-    QLineEdit,
-    QMessageBox,
-    QPlainTextEdit,
-    QPushButton,
-    QSizePolicy,
-    QSpinBox,
-    QTableView,
-    QVBoxLayout,
-    QWidget,
-)
+    QAbstractItemView, QApplication, QCheckBox, QFormLayout, QGridLayout,
+    QGroupBox, QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox,
+    QPlainTextEdit, QPushButton, QSizePolicy, QSpinBox, QTableView,
+    QVBoxLayout, QWidget)
 
 import constants as C
 from job_scraper import (
-    TITLE_KEYWORDS_TO_ALWAYS_KEEP,
-    TITLE_KEYWORDS_TO_DISCARD,
-    TITLE_KEYWORDS_TO_KEEP,
-    WL,
-    BadStatusCode,
-    LinkedinJobScraper,
-    LinkedinSession,
-    filter_job_descriptions,
-    filter_job_titles,
-    save_job_dataframe_to_html_file,
-)
+    TITLE_KEYWORDS_TO_ALWAYS_KEEP, TITLE_KEYWORDS_TO_DISCARD,
+    TITLE_KEYWORDS_TO_KEEP, WL, BadStatusCode, LinkedinJobScraper,
+    LinkedinSession, filter_job_descriptions, filter_job_titles,
+    save_job_dataframe_to_html_file)
 from logger import CONN, DEBUG, INFO, logger
 
 logger.setLevel(CONN)
@@ -56,7 +34,7 @@ SIZE_MIN_EXPANDING = QSizePolicy.MinimumExpanding
 LABEL_ROLE = QFormLayout.LabelRole
 FIELD_ROLE = QFormLayout.FieldRole
 
-FONT_SIZE = 12
+PATH_ICONS = "icons"
 
 
 class MainWindow(QWidget):
@@ -438,6 +416,11 @@ class PandasModel(QAbstractTableModel):
         self._data: DataFrame = data
         self._l = logger.getChild(self.__class__.__name__)
 
+        self._icons = {
+            True: QIcon(f"{PATH_ICONS}/tick.png"),
+            False: QIcon(f"{PATH_ICONS}/cross.png"),
+        }
+
     @property
     def df(self):
         return self._data
@@ -448,11 +431,19 @@ class PandasModel(QAbstractTableModel):
     def columnCount(self, parent=None):
         return self._data.shape[1]
 
-    def data(self, index, role=Qt.DisplayRole):
-        if index.isValid():
-            if role == Qt.DisplayRole:
-                return str(self._data.iloc[index.row(), index.column()])
-        return None
+    def data(self, index, role):
+        if not index.isValid():
+            return None
+
+        value = self._data.iloc[index.row(), index.column()]
+        if role == Qt.DisplayRole:
+            # value can be a numpy.bool_, which makes `isinstance(value, bool)`
+            # not usable
+            if value not in (True, False):
+                return str(value)
+        elif role == Qt.DecorationRole:
+            if value in (True, False):
+                return self._icons[value]
 
     def headerData(self, section, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
