@@ -715,14 +715,14 @@ class TitleFiltersLayout(QVBoxLayout):
 
         Parameters
         ----------
-        title_filter_keywords : List[str]
+        title_filter_keywords : Iterable[str]
             Iterable of title filter keywords.
 
         """
         title_str = ", ".join(title_filter_keywords)
         self.text_edit.setPlainText(title_str)
 
-    def get_title_filter_list(self) -> Union[List[str], None]:
+    def get_title_filter_list(self) -> Optional[List[str]]:
         """Create and return a list of filter keywords.
 
         Splits the user input from the text box on the ',' and adds the
@@ -730,7 +730,7 @@ class TitleFiltersLayout(QVBoxLayout):
 
         Returns
         -------
-        Union[List[str], None]
+        Optional[List[str]]
             Returns None if no keywords were specified.
 
         """

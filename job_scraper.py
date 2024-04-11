@@ -86,7 +86,8 @@ class LinkedinSession:
         self.session = Session()
 
     def test_session(self) -> None:
-        """Convenience method to test the session by retrieving a job page.
+        """Test the session by retrieving a job page.
+
         get_html() will raise any errors depending on the received HTTP
         status codes.
         """
@@ -189,6 +190,10 @@ class LinkedinJobScraper:
 
         Will determine this on the first call, because it is session
         dependent.
+
+        Returns
+        -------
+        int
         """
         if self._n_jobs_per_page is None:
             self._l.debug("Determining the number of jobs per page")
