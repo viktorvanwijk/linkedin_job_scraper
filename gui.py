@@ -185,6 +185,7 @@ class MainWindow(QWidget):
             self.session.test_session()
             current_states["get_n_jobs"] = True
             current_states["scrape_jobs"] = True
+            QMessageBox.information(self, "Test session", "Testing successful.")
         except (SystemError, TimeoutError, BadStatusCode) as e:
             QMessageBox.critical(
                 self, "Test session", f"Error during testing of session: {e}"
