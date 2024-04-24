@@ -669,12 +669,13 @@ def convert_days_to_sec(n_days: int) -> int:
     return n_days * 3600 * 24
 
 
-def contains_keywords(title: str, keywords: Iterable[str]) -> bool:
-    """Checks if the title contains any of the passed keywords.
+def contains_keywords(string: str, keywords: Iterable[str]) -> bool:
+    """Checks if a string contains any of the passed keywords
+    (case-insensitive).
 
     Parameters
     ----------
-    title : str
+    string : str
     keywords : Iterable[str]
         Iterable of keywords to search for.
 
@@ -684,9 +685,9 @@ def contains_keywords(title: str, keywords: Iterable[str]) -> bool:
         True if any of the keywords are in `title`, False if not.
 
     """
-    title = title.lower()
+    string = string.lower()
     for keyword in keywords:
-        if keyword.lower() in title:
+        if keyword.lower() in string:
             return True
     return False
 
