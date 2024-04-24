@@ -34,6 +34,7 @@ TITLE_KEYWORDS_TO_DISCARD = (
     "powerbi", "rust", "react", "internship", "principal", "typescript",
     "werktuig", "gis", "angular", "stage", "year usd"
 )
+DESCRIPTION_KEYWORDS = ("python",)
 # fmt: on
 
 
@@ -603,7 +604,9 @@ def filter_job_titles(
 
 # TODO-1
 def filter_job_descriptions(
-    df: DataFrame, keyword: str, index_filter: Optional[pandas.Index] = None
+    df: DataFrame,
+    keywords: Iterable[str],
+    index_filter: Optional[pandas.Index] = None,
 ) -> DataFrame:
     """Filter job descriptions based on a keyword.
 
@@ -617,8 +620,8 @@ def filter_job_descriptions(
     ----------
     df : DataFrame
         Dataframe with jobs.
-    keyword : str
-        Keyword to search for in the job description.
+    keywords : Iterable[str]
+        Keywords to search for in the job description.
     index_filter : Optional[pandas.Index]
         Series of indices for which to filter on the descriptions. If None, the
         descriptions for all jobs will be checked.
@@ -640,10 +643,10 @@ def filter_job_descriptions(
 
     df[C.KEY_DESCR_CONTAINS_KEYWORD] = None
     for row_id, row in df_temp.iterrows():
-        if row[C.KEY_JOB_DESCRIPTION] is None:
+        if (descr := row[C.KEY_JOB_DESCRIPTION]) is None:
             continue
-        elif row[C.KEY_JOB_DESCRIPTION] is not C.UNKNOWN:
-            contains_keyword = keyword in row[C.KEY_JOB_DESCRIPTION].lower()
+        elif descr is not C.UNKNOWN:
+            contains_keyword = contains_keywords(descr.lower(), keywords)
         else:
             contains_keyword = C.UNKNOWN
 
