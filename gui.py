@@ -20,10 +20,10 @@ from PyQt5.QtWidgets import (
 
 import constants as C
 from job_scraper import (
-    TITLE_KEYWORDS_TO_ALWAYS_KEEP, TITLE_KEYWORDS_TO_DISCARD,
-    TITLE_KEYWORDS_TO_KEEP, WL, BadStatusCode, LinkedinJobScraper,
-    LinkedinSession, filter_job_descriptions, filter_job_titles,
-    save_job_dataframe_to_html_file)
+    DESCRIPTION_KEYWORDS, TITLE_KEYWORDS_TO_ALWAYS_KEEP,
+    TITLE_KEYWORDS_TO_DISCARD, TITLE_KEYWORDS_TO_KEEP, WL, BadStatusCode,
+    LinkedinJobScraper, LinkedinSession, filter_job_descriptions,
+    filter_job_titles, save_job_dataframe_to_html_file)
 from logger import CONN, DEBUG, INFO, logger
 
 logger.setLevel(CONN)
@@ -101,18 +101,19 @@ class MainWindow(QWidget):
         )
         self.work_location_layout = WorkLocationLayout()
         self.title_filter_layouts = {
-            "always_keep": TitleFiltersLayout(
+            "always_keep": FilterKeywordsLayout(
                 "Title keywords to always keep", TITLE_KEYWORDS_TO_ALWAYS_KEEP
             ),
-            "keep": TitleFiltersLayout(
+            "keep": FilterKeywordsLayout(
                 "Title keywords to keep", TITLE_KEYWORDS_TO_KEEP
             ),
-            "discard": TitleFiltersLayout(
+            "discard": FilterKeywordsLayout(
                 "Title keyword to discard", TITLE_KEYWORDS_TO_DISCARD
             ),
         }
-        self.description_filter_input = QLineEdit()
-        self.description_filter_input.setText("python")
+        self.description_filter_input = FilterKeywordsLayout(
+            "Description keywords", DESCRIPTION_KEYWORDS
+        )
         self.buttons = {
             "test_session": create_button("Test session", True),
             "get_n_jobs": create_button("Get number of jobs", True),
@@ -131,16 +132,12 @@ class MainWindow(QWidget):
         # Add widgets to layout
         layout = QHBoxLayout(self)
 
-        layout_descr_filter = QHBoxLayout()
-        layout_descr_filter.addWidget(QLabel("Job description filter"))
-        layout_descr_filter.addWidget(self.description_filter_input)
-
         layout_settings = QVBoxLayout(self.settings_groupbox)
         layout_settings.addLayout(self.form_settings_layout)
         layout_settings.addLayout(self.work_location_layout)
         for tfl in self.title_filter_layouts.values():
             layout_settings.addLayout(tfl)
-        layout_settings.addLayout(layout_descr_filter)
+        layout_settings.addLayout(self.description_filter_input)
 
         layout_l = QVBoxLayout()
         layout_l.addWidget(self.settings_groupbox)
@@ -244,9 +241,9 @@ class MainWindow(QWidget):
         Shows a warning message box if not.
         """
         filter_lists = [
-            self.title_filter_layouts["always_keep"].get_title_filter_list(),
-            self.title_filter_layouts["keep"].get_title_filter_list(),
-            self.title_filter_layouts["discard"].get_title_filter_list(),
+            self.title_filter_layouts["always_keep"].get_keyword_list(),
+            self.title_filter_layouts["keep"].get_keyword_list(),
+            self.title_filter_layouts["discard"].get_keyword_list(),
         ]
         if all(fl is None for fl in filter_lists):
             QMessageBox.warning(
@@ -287,8 +284,8 @@ class MainWindow(QWidget):
         Checks if a description filter was specified. Shows a warning message
         box if not.
         """
-        keyword = self.description_filter_input.text()
-        if keyword == "":
+        keywords = self.description_filter_input.get_keyword_list()
+        if keywords is None:
             QMessageBox.warning(
                 self,
                 "Filtering job descriptions",
@@ -297,7 +294,7 @@ class MainWindow(QWidget):
             return
 
         current_indices = self.job_table.get_current_dataframe_indices()
-        df_res = filter_job_descriptions(self.df, keyword, current_indices)
+        df_res = filter_job_descriptions(self.df, keywords, current_indices)
         self.job_table.display_jobs(df_res)
 
     def _callback_save_results(self) -> None:
@@ -667,9 +664,8 @@ class WorkLocationLayout(QVBoxLayout):
         return wl_list
 
 
-class TitleFiltersLayout(QVBoxLayout):
-    """Layout with label and text edit box for specifying title filter
-    keywords.
+class FilterKeywordsLayout(QVBoxLayout):
+    """Layout with label and text edit box for specifying filter keywords.
     """
 
     def __init__(
@@ -685,7 +681,7 @@ class TitleFiltersLayout(QVBoxLayout):
         name : str
             Layout name, will be put above the text edit box as a label.
         default_keywords : Optional[List[str]]
-            List of default title filter keywords that will be set in the
+            List of default filter keywords that will be set in the
             text box.
         """
         super().__init__(*args, **kwargs)
@@ -695,19 +691,22 @@ class TitleFiltersLayout(QVBoxLayout):
 
         self._init_ui()
         if self.default_keywords is not None:
-            self.set_title_filter_keywords(self.default_keywords)
+            self.set_keywords(self.default_keywords)
 
     def _init_ui(self) -> None:
         """Initialize the user interface of the widget."""
         self.text_edit = QPlainTextEdit()
         self.text_edit.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
         self.text_edit.setFixedHeight(60)
+        self.text_edit.setToolTip(
+            "Specify filter keywords, must be separated by a `,`"
+        )
 
         self.addWidget(QLabel(f"{self.name}:"))
         self.addWidget(self.text_edit)
 
-    def set_title_filter_keywords(
-        self, title_filter_keywords: Iterable[str]
+    def set_keywords(
+        self, filter_keywords: Iterable[str]
     ) -> None:
         """Set the contents of the iterable to the text box.
 
@@ -715,14 +714,14 @@ class TitleFiltersLayout(QVBoxLayout):
 
         Parameters
         ----------
-        title_filter_keywords : Iterable[str]
-            Iterable of title filter keywords.
+        filter_keywords : Iterable[str]
+            Iterable of filter keywords.
 
         """
-        title_str = ", ".join(title_filter_keywords)
+        title_str = ", ".join(filter_keywords)
         self.text_edit.setPlainText(title_str)
 
-    def get_title_filter_list(self) -> Optional[List[str]]:
+    def get_keyword_list(self) -> Optional[List[str]]:
         """Create and return a list of filter keywords.
 
         Splits the user input from the text box on the ',' and adds the
