@@ -111,8 +111,9 @@ class MainWindow(QWidget):
                 "Title keyword to discard", TITLE_KEYWORDS_TO_DISCARD
             ),
         }
-        self.description_filter_input = QLineEdit()
-        self.description_filter_input.setText("python")
+        self.description_filter_input = FilterKeywordsLayout(
+            "Description keywords", DESCRIPTION_KEYWORDS
+        )
         self.buttons = {
             "test_session": create_button("Test session", True),
             "get_n_jobs": create_button("Get number of jobs", True),
@@ -131,16 +132,12 @@ class MainWindow(QWidget):
         # Add widgets to layout
         layout = QHBoxLayout(self)
 
-        layout_descr_filter = QHBoxLayout()
-        layout_descr_filter.addWidget(QLabel("Job description filter"))
-        layout_descr_filter.addWidget(self.description_filter_input)
-
         layout_settings = QVBoxLayout(self.settings_groupbox)
         layout_settings.addLayout(self.form_settings_layout)
         layout_settings.addLayout(self.work_location_layout)
         for tfl in self.title_filter_layouts.values():
             layout_settings.addLayout(tfl)
-        layout_settings.addLayout(layout_descr_filter)
+        layout_settings.addLayout(self.description_filter_input)
 
         layout_l = QVBoxLayout()
         layout_l.addWidget(self.settings_groupbox)
@@ -287,8 +284,8 @@ class MainWindow(QWidget):
         Checks if a description filter was specified. Shows a warning message
         box if not.
         """
-        keyword = self.description_filter_input.text()
-        if keyword == "":
+        keywords = self.description_filter_input.get_keyword_list()
+        if keywords is None:
             QMessageBox.warning(
                 self,
                 "Filtering job descriptions",
@@ -297,7 +294,7 @@ class MainWindow(QWidget):
             return
 
         current_indices = self.job_table.get_current_dataframe_indices()
-        df_res = filter_job_descriptions(self.df, keyword, current_indices)
+        df_res = filter_job_descriptions(self.df, keywords, current_indices)
         self.job_table.display_jobs(df_res)
 
     def _callback_save_results(self) -> None:
