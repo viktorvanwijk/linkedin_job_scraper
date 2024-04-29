@@ -564,40 +564,24 @@ def filter_job_titles(
         and keywords_discard is None
     )
 
-    if index_filter is not None:
-        raise NotImplementedError(
-            "The use of `index_filter` is currently not implemented."
-        )
-    # df_temp = df.loc[index_filter, :] if index_filter is not None else df
+    index_filter = index_filter if index_filter is not None else df.index
 
+    # Default values whether to always keep, keep, or discard titles
+    i = {"always_keep": False, "keep": True, "discard": False}
     for type_, keywords in zip(
         ("always_keep", "keep", "discard"),
         (keywords_always_keep, keywords_keep, keywords_discard),
     ):
-        if keywords is None:
-            continue
-        df[C.KEY_TITLE_CONTAINS_KEYWORDS.format(type_)] = df[C.KEY_TITLE].apply(
-            contains_keywords, args=(keywords,)
-        )
+        if keywords is not None:
+            i[type_] = df.loc[index_filter, C.KEY_TITLE].apply(
+                contains_keywords, args=(keywords,)
+            )
 
-    if keywords_always_keep is not None:
-        i_always_keep = df[C.KEY_TITLE_CONTAINS_KEYWORDS.format("always_keep")]
-    else:
-        i_always_keep = False
-
-    if keywords_keep is not None:
-        i_keep = df[C.KEY_TITLE_CONTAINS_KEYWORDS.format("keep")]
-    else:
-        i_keep = True
-
-    if keywords_discard is not None:
-        i_discard = df[C.KEY_TITLE_CONTAINS_KEYWORDS.format("discard")]
-    else:
-        i_discard = True
-
-    df[C.KEY_KEEP_JOB_AFTER_TITLE_FILTER] = i_always_keep | (
-        i_keep & ~i_discard
+    # fmt: off
+    df.loc[index_filter, C.KEY_KEEP_JOB_AFTER_TITLE_FILTER] = (
+        i["always_keep"] | (i["keep"] & ~i["discard"])
     )
+    # fmt: on
 
     return df[df[C.KEY_KEEP_JOB_AFTER_TITLE_FILTER]]
 

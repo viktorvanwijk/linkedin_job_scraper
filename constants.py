@@ -1,7 +1,6 @@
 # Dataframe keys
 KEY_DESCR_CONTAINS_KEYWORD = "descr_contains_keyword"
 KEY_JOB_DESCRIPTION = "description_html"
-KEY_TITLE_CONTAINS_KEYWORDS = "title_contains_{}_keyword"
 KEY_KEEP_JOB_AFTER_TITLE_FILTER = "keep_job_after_title_filter"
 KEY_TITLE = "title"
 KEY_COMPANY = "company"

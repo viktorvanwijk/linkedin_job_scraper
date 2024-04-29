@@ -253,9 +253,8 @@ class MainWindow(QWidget):
 
         current_button_states = self._get_current_button_states()
         self._lock_buttons()
-        # TODO-4: only filter jobs that are currently displayed instead of
-        #  all jobs?
-        df_res = filter_job_titles(self.df, *filter_lists)
+        current_indices = self.job_table.get_current_dataframe_indices()
+        df_res = filter_job_titles(self.df, *filter_lists, current_indices)
         self.job_table.display_jobs(df_res)
         self._change_button_states(current_button_states)
 
