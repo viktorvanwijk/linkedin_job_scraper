@@ -7,11 +7,12 @@ Created on Mon Mar 11 14:16:09 2024
 
 import os
 import sys
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union, Tuple
 
 import pandas as pd
 from pandas import DataFrame
-from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PyQt5.QtCore import (
+    QAbstractTableModel, QModelIndex, QObject, Qt, QThread, pyqtSignal)
 from PyQt5.QtGui import QIcon, QKeyEvent
 from PyQt5.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QFormLayout, QGroupBox,
@@ -221,14 +222,30 @@ class MainWindow(QWidget):
         if not self._check_settings_dict(settings_dict):
             return
 
+        self._save_current_button_states()
         self._lock_buttons()
-        self.df, self.metadata = self.scraper.scrape_jobs(**settings_dict)
+        self.worker = LinkedinJobScraperWorker(
+            self.scraper.scrape_jobs, **settings_dict
+        )
+        # TODO: what does this do? Is it even necessary?
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.result.connect(self._slot_scrape_jobs_result)
+        self.worker.start()
+        self._unlock_buttons(["stop_worker"])
+
+    def _slot_scrape_jobs_result(self, res: Tuple) -> None:
+        """Slot for the scraping jobs result."""
+        assert isinstance(res, tuple)
+        assert isinstance(res[0], DataFrame)
+        assert isinstance(res[1], dict)
+
+        self.df, self.metadata = res
         if not self.df.empty:
             self.job_table.display_jobs(self.df)
             QMessageBox.information(
                 self, "Fetch jobs", "Job fetching completed"
             )
-            # TODO: bit ugly
+            # TODO-7: bit ugly
             self._unlock_buttons()
             self._lock_buttons(["filter_job_descriptions"])
         else:
