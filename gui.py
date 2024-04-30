@@ -71,7 +71,7 @@ class MainWindow(QWidget):
         self.df = None
         self.metadata = None
 
-        self._saved_button_states = None
+        self._last_button_states = None
 
         self._init_ui()
         self._connect_signals()
@@ -375,7 +375,7 @@ class MainWindow(QWidget):
         # solution which directly stops the thread.
         # See: https://doc.qt.io/qtforpython-5/PySide2/QtCore/QThread.html
         self.worker.terminate()
-        self._change_button_states(self._saved_button_states)
+        self._change_button_states(self._last_button_states)
 
     def _change_button_states(self, button_states: Dict[str, bool]) -> None:
         """Change button states.
@@ -426,7 +426,7 @@ class MainWindow(QWidget):
 
     def _save_current_button_states(self) -> None:
         """Save the current button states."""
-        self._saved_button_states = self._get_current_button_states()
+        self._last_button_states = self._get_current_button_states()
 
     def _get_settings_dict(self) -> Dict[str, Any]:
         """Create a dictionary of all specified settings that are needed for
