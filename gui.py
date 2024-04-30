@@ -455,7 +455,7 @@ class MainWindow(QWidget):
         Returns
         -------
         bool
-            False if one of the settings was not specified, True if ok.
+            True if all settings were specified, False otherwise.
         """
         for param, value in settings_dict.items():
             if value in ("", None, []):
