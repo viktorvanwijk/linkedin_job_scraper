@@ -509,6 +509,14 @@ class PandasModel(QAbstractTableModel):
     https://learndataanalysis.org/display-pandas-dataframe-with-pyqt5-qtableview-widget/
     """
 
+    DATAFRAME_KEY_TO_COLUMN_NAME = {
+        C.KEY_TITLE: "Title",
+        C.KEY_COMPANY: "Company",
+        C.KEY_LOCATION: "Location",
+        C.KEY_DATE: "Date",
+        C.KEY_HAS_JOB_DESCRIPTION: "Description",
+    }
+
     def __init__(self, data, parent=None):
         super().__init__(parent)
         self._data: DataFrame = data
@@ -540,14 +548,14 @@ class PandasModel(QAbstractTableModel):
             if value not in (True, False):
                 return str(value)
         elif role == Qt.DecorationRole:
-            if value in (True, False):
-                return self._icons[value]
+            return self._icons.get(value, None)
 
     def headerData(self, section, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            col = self._data.columns[section].replace("_", " ").capitalize()
-            return col
-        return super().headerData(section, orientation, role)
+            key = self._data.columns[section]
+            return self.DATAFRAME_KEY_TO_COLUMN_NAME.get(key, C.UNKNOWN)
+        else:
+            return super().headerData(section, orientation, role)
 
     def removeRows(self, row, count, parent=QModelIndex()):
         self._l.debug(f"Deleting rows from '{row}' to '{row + count - 1}'.")
