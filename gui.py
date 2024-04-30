@@ -127,6 +127,7 @@ class MainWindow(QWidget):
             "filter_job_descriptions": create_button("Filter job descriptions"),
             "save_results": create_button("Save results"),
             "reset_table_view": create_button("Reset filters"),
+            "stop_worker": create_button("Stop"),
         }
 
         # Right side widgets
@@ -177,6 +178,7 @@ class MainWindow(QWidget):
         self.buttons["reset_table_view"].clicked.connect(
             self._callback_reset_table_view
         )
+        self.buttons["stop_worker"].clicked.connect(self._callback_stop_worker)
 
     def _callback_test_session(self) -> None:
         """Callback for the 'Test session' (test_session) button."""
@@ -247,7 +249,7 @@ class MainWindow(QWidget):
             )
             # TODO-7: bit ugly
             self._unlock_buttons()
-            self._lock_buttons(["filter_job_descriptions"])
+            self._lock_buttons(["filter_job_descriptions", "stop_worker"])
         else:
             QMessageBox.information(
                 self, "Fetch jobs", "No jobs available with current settings"
@@ -336,6 +338,21 @@ class MainWindow(QWidget):
         Removes all applied filters and shows all the jobs that were fetched.
         """
         self.job_table.display_jobs(self.df)
+
+    def _callback_stop_worker(self) -> None:
+        """Callback for the 'Stop' (stop_worker) button.
+
+        Stops the current thread worker (if it exists) and resets the buttons
+        to their state before the worker was started.
+        """
+        if self.worker is None or not self.worker.isRunning():
+            return
+
+        self.worker.exit()
+        QMessageBox.information(
+            self, "Stop worker", "Current worker is stopped."
+        )
+        self._change_button_states(self._saved_button_states)
 
     def _change_button_states(self, button_states: Dict[str, bool]) -> None:
         """Change button states.
