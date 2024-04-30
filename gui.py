@@ -285,6 +285,7 @@ class MainWindow(QWidget):
 
         Shows an information message box upon completion.
         """
+        self._save_current_button_states()
         self._lock_buttons()
         current_indices = self.job_table.get_current_dataframe_indices()
         self._l.debug(f"Get job descriptions: {current_indices}")
