@@ -7,11 +7,12 @@ Created on Mon Mar 11 14:16:09 2024
 
 import os
 import sys
-from typing import Any, Dict, Iterable, List, Optional, Union
+from typing import Any, Dict, Iterable, List, Optional, Union, Tuple
 
 import pandas as pd
 from pandas import DataFrame
-from PyQt5.QtCore import QAbstractTableModel, QModelIndex, Qt
+from PyQt5.QtCore import (
+    QAbstractTableModel, QModelIndex, QObject, Qt, QThread, pyqtSignal)
 from PyQt5.QtGui import QIcon, QKeyEvent
 from PyQt5.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QFormLayout, QGroupBox,
@@ -60,14 +61,17 @@ class MainWindow(QWidget):
         """
         super().__init__(*args, **kwargs)
 
-        self.session = session
-        self.scraper = scraper
+        self.session: LinkedinSession = session
+        self.scraper: LinkedinJobScraper = scraper
+        self.worker: Optional[LinkedinJobScraperWorker] = None
         self.save_folder = save_folder
 
         self._l = logger.getChild(self.__class__.__name__)
 
         self.df = None
         self.metadata = None
+
+        self._saved_button_states = None
 
         self._init_ui()
         self._connect_signals()
@@ -123,6 +127,7 @@ class MainWindow(QWidget):
             "filter_job_descriptions": create_button("Filter job descriptions"),
             "save_results": create_button("Save results"),
             "reset_table_view": create_button("Reset filters"),
+            "stop_worker": create_button("Stop"),
         }
 
         # Right side widgets
@@ -173,6 +178,7 @@ class MainWindow(QWidget):
         self.buttons["reset_table_view"].clicked.connect(
             self._callback_reset_table_view
         )
+        self.buttons["stop_worker"].clicked.connect(self._callback_stop_worker)
 
     def _callback_test_session(self) -> None:
         """Callback for the 'Test session' (test_session) button."""
@@ -218,16 +224,31 @@ class MainWindow(QWidget):
         if not self._check_settings_dict(settings_dict):
             return
 
+        self._save_current_button_states()
         self._lock_buttons()
-        self.df, self.metadata = self.scraper.scrape_jobs(**settings_dict)
+        self.worker = LinkedinJobScraperWorker(
+            self.scraper.scrape_jobs, **settings_dict
+        )
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.result.connect(self._slot_scrape_jobs_result)
+        self.worker.start()
+        self._unlock_buttons(["stop_worker"])
+
+    def _slot_scrape_jobs_result(self, res: Tuple) -> None:
+        """Slot for the scraping jobs result."""
+        assert isinstance(res, tuple)
+        assert isinstance(res[0], DataFrame)
+        assert isinstance(res[1], dict)
+
+        self.df, self.metadata = res
         if not self.df.empty:
             self.job_table.display_jobs(self.df)
             QMessageBox.information(
                 self, "Fetch jobs", "Job fetching completed"
             )
-            # TODO: bit ugly
+            # TODO-7: bit ugly
             self._unlock_buttons()
-            self._lock_buttons(["filter_job_descriptions"])
+            self._lock_buttons(["filter_job_descriptions", "stop_worker"])
         else:
             QMessageBox.information(
                 self, "Fetch jobs", "No jobs available with current settings"
@@ -264,17 +285,29 @@ class MainWindow(QWidget):
 
         Shows an information message box upon completion.
         """
+        self._save_current_button_states()
         self._lock_buttons()
         current_indices = self.job_table.get_current_dataframe_indices()
         self._l.debug(f"Get job descriptions: {current_indices}")
-        df_res = self.scraper.get_job_descriptions(self.df, current_indices)
-        self.job_table.display_jobs(df_res)
+        self.worker = LinkedinJobScraperWorker(
+            self.scraper.get_job_descriptions, self.df, current_indices
+        )
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.result.connect(self._slot_get_job_descriptions_result)
+        self.worker.start()
+        self._unlock_buttons(["stop_worker"])
+
+    def _slot_get_job_descriptions_result(self, res: DataFrame) -> None:
+        """Slot for the scraping jobs result."""
+        self.job_table.display_jobs(res)
         QMessageBox.information(
             self,
             "Fetch job descriptions",
             "Fetching of job descriptions is completed",
         )
+        # TODO-7: bit ugly
         self._unlock_buttons()
+        self._lock_buttons(["stop_worker"])
 
     def _callback_filter_job_descriptions(self) -> None:
         """Callback for the 'Filter job descriptions' (filter_job_descriptions)
@@ -316,6 +349,33 @@ class MainWindow(QWidget):
         Removes all applied filters and shows all the jobs that were fetched.
         """
         self.job_table.display_jobs(self.df)
+
+    def _callback_stop_worker(self) -> None:
+        """Callback for the 'Stop' (stop_worker) button.
+
+        Stops the current thread worker (if it exists) and resets the buttons
+        to their state before the worker was started.
+
+        Should only be used in emergencies.
+        """
+        if self.worker is None or not self.worker.isRunning():
+            return
+
+        res = QMessageBox.question(
+            self,
+            "Stop action",
+            "Are you sure you want to stop the current action?",
+        )
+        if res == QMessageBox.No:
+            return
+
+        # NOTE: normally, threads should be stopped using quit() instead of
+        # terminate(). But here, the blocking method with an infinite loop is
+        # executed outside the worker class, so using terminate() is the only
+        # solution which directly stops the thread.
+        # See: https://doc.qt.io/qtforpython-5/PySide2/QtCore/QThread.html
+        self.worker.terminate()
+        self._change_button_states(self._saved_button_states)
 
     def _change_button_states(self, button_states: Dict[str, bool]) -> None:
         """Change button states.
@@ -364,6 +424,10 @@ class MainWindow(QWidget):
             name: button.isEnabled() for name, button in self.buttons.items()
         }
 
+    def _save_current_button_states(self) -> None:
+        """Save the current button states."""
+        self._saved_button_states = self._get_current_button_states()
+
     def _get_settings_dict(self) -> Dict[str, Any]:
         """Create a dictionary of all specified settings that are needed for
         fetching jobs. Includes settings from the form settings layout and work
@@ -400,6 +464,43 @@ class MainWindow(QWidget):
                 )
                 return False
         return True
+
+
+class LinkedinJobScraperWorker(QThread):
+    """Worker for the LinkedinJobScraper object."""
+
+    started = pyqtSignal()
+    finished = pyqtSignal()
+    result = pyqtSignal(object)
+
+    def __init__(self, function, *func_args, **func_kwargs):
+        """
+
+        Parameters
+        ----------
+        function : func_type
+            Callback to execute in run().
+        func_args : Tuple
+            Arguments to pass to the callback in `function`.
+        func_kwargs : Dict[str, Any]
+            Keyword arguments to pass to the callback in `function`.
+        """
+        super().__init__()
+
+        self.function = function
+        self.func_args = func_args
+        self.func_kwargs = func_kwargs
+
+    def run(self) -> None:
+        """Run thread.
+
+        Emits signals when the thread is started and finished, and for the
+        result.
+        """
+        self.started.emit()
+        res = self.function(*self.func_args, **self.func_kwargs)
+        self.result.emit(res)
+        self.finished.emit()
 
 
 class PandasModel(QAbstractTableModel):
