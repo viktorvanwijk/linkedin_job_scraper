@@ -63,7 +63,7 @@ class MainWindow(QWidget):
 
         self.session: LinkedinSession = session
         self.scraper: LinkedinJobScraper = scraper
-        self.worker: Optional[LinkedinJobScraperWorker] = None
+        self.worker: Optional[Worker] = None
         self.save_folder = save_folder
 
         self._l = logger.getChild(self.__class__.__name__)
@@ -226,7 +226,7 @@ class MainWindow(QWidget):
 
         self._save_current_button_states()
         self._lock_buttons()
-        self.worker = LinkedinJobScraperWorker(
+        self.worker = Worker(
             self.scraper.scrape_jobs, **settings_dict
         )
         self.worker.finished.connect(self.worker.deleteLater)
@@ -289,7 +289,7 @@ class MainWindow(QWidget):
         self._lock_buttons()
         current_indices = self.job_table.get_current_dataframe_indices()
         self._l.debug(f"Get job descriptions: {current_indices}")
-        self.worker = LinkedinJobScraperWorker(
+        self.worker = Worker(
             self.scraper.get_job_descriptions, self.df, current_indices
         )
         self.worker.finished.connect(self.worker.deleteLater)
@@ -466,8 +466,8 @@ class MainWindow(QWidget):
         return True
 
 
-class LinkedinJobScraperWorker(QThread):
-    """Worker for the LinkedinJobScraper object."""
+class Worker(QThread):
+    """Worker object to execute a method in a separate thread."""
 
     started = pyqtSignal()
     finished = pyqtSignal()
