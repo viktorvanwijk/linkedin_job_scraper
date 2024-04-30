@@ -70,6 +70,8 @@ class MainWindow(QWidget):
         self.df = None
         self.metadata = None
 
+        self._saved_button_states = None
+
         self._init_ui()
         self._connect_signals()
 
@@ -364,6 +366,10 @@ class MainWindow(QWidget):
         return {
             name: button.isEnabled() for name, button in self.buttons.items()
         }
+
+    def _save_current_button_states(self) -> None:
+        """Save the current button states."""
+        self._saved_button_states = self._get_current_button_states()
 
     def _get_settings_dict(self) -> Dict[str, Any]:
         """Create a dictionary of all specified settings that are needed for
