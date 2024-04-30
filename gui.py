@@ -571,7 +571,7 @@ class PandasModel(QAbstractTableModel):
         self._data.sort_values(
             self._data.columns[column],
             axis="rows",
-            ascending=True if order == Qt.AscendingOrder else False,
+            ascending=order == Qt.AscendingOrder,
             inplace=True,
         )
         self.layoutChanged.emit()
