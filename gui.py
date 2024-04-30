@@ -444,19 +444,36 @@ class MainWindow(QWidget):
 
 
 class LinkedinJobScraperWorker(QThread):
+    """Worker for the LinkedinJobScraper object."""
 
     started = pyqtSignal()
     finished = pyqtSignal()
     result = pyqtSignal(object)
 
     def __init__(self, function, *func_args, **func_kwargs):
+        """
+
+        Parameters
+        ----------
+        function : func_type
+            Callback to execute in run().
+        func_args : Tuple
+            Arguments to pass to the callback in `function`.
+        func_kwargs : Dict[str, Any]
+            Keyword arguments to pass to the callback in `function`.
+        """
         super().__init__()
 
         self.function = function
         self.func_args = func_args
         self.func_kwargs = func_kwargs
 
-    def run(self):
+    def run(self) -> None:
+        """Run thread.
+
+        Emits signals when the thread is started and finished, and for the
+        result.
+        """
         self.started.emit()
         res = self.function(*self.func_args, **self.func_kwargs)
         self.result.emit(res)
