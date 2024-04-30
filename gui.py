@@ -402,6 +402,26 @@ class MainWindow(QWidget):
         return True
 
 
+class LinkedinJobScraperWorker(QThread):
+
+    started = pyqtSignal()
+    finished = pyqtSignal()
+    result = pyqtSignal(object)
+
+    def __init__(self, function, *func_args, **func_kwargs):
+        super().__init__()
+
+        self.function = function
+        self.func_args = func_args
+        self.func_kwargs = func_kwargs
+
+    def run(self):
+        self.started.emit()
+        res = self.function(*self.func_args, **self.func_kwargs)
+        self.result.emit(res)
+        self.finished.emit()
+
+
 class PandasModel(QAbstractTableModel):
     """Custom QAbstractTableModel for DataFrames.
     Modified from:
