@@ -613,8 +613,9 @@ def filter_job_descriptions(
     Returns
     -------
     DataFrame
-        Dataframe containing only jobs of which the description contains the
-        `keyword`, or jobs for which the description was failed to be retrieved.
+        Dataframe containing only jobs of which the description contains
+        (one of) the keywords in `keywords`, or jobs for which the description
+        was failed to be retrieved.
 
     Raises
     ------
