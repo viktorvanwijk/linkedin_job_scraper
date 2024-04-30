@@ -288,14 +288,25 @@ class MainWindow(QWidget):
         self._lock_buttons()
         current_indices = self.job_table.get_current_dataframe_indices()
         self._l.debug(f"Get job descriptions: {current_indices}")
-        df_res = self.scraper.get_job_descriptions(self.df, current_indices)
-        self.job_table.display_jobs(df_res)
+        self.worker = LinkedinJobScraperWorker(
+            self.scraper.get_job_descriptions, self.df, current_indices
+        )
+        self.worker.finished.connect(self.worker.deleteLater)
+        self.worker.result.connect(self._slot_get_job_descriptions_result)
+        self.worker.start()
+        self._unlock_buttons(["stop_worker"])
+
+    def _slot_get_job_descriptions_result(self, res: DataFrame) -> None:
+        """Slot for the scraping jobs result."""
+        self.job_table.display_jobs(res)
         QMessageBox.information(
             self,
             "Fetch job descriptions",
             "Fetching of job descriptions is completed",
         )
+        # TODO-7: bit ugly
         self._unlock_buttons()
+        self._lock_buttons(["stop_worker"])
 
     def _callback_filter_job_descriptions(self) -> None:
         """Callback for the 'Filter job descriptions' (filter_job_descriptions)
