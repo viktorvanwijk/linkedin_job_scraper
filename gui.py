@@ -60,8 +60,9 @@ class MainWindow(QWidget):
         """
         super().__init__(*args, **kwargs)
 
-        self.session = session
-        self.scraper = scraper
+        self.session: LinkedinSession = session
+        self.scraper: LinkedinJobScraper = scraper
+        self.worker: Optional[LinkedinJobScraperWorker] = None
         self.save_folder = save_folder
 
         self._l = logger.getChild(self.__class__.__name__)
