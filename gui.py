@@ -229,7 +229,6 @@ class MainWindow(QWidget):
         self.worker = LinkedinJobScraperWorker(
             self.scraper.scrape_jobs, **settings_dict
         )
-        # TODO: what does this do? Is it even necessary?
         self.worker.finished.connect(self.worker.deleteLater)
         self.worker.result.connect(self._slot_scrape_jobs_result)
         self.worker.start()
@@ -344,14 +343,26 @@ class MainWindow(QWidget):
 
         Stops the current thread worker (if it exists) and resets the buttons
         to their state before the worker was started.
+
+        Should only be used in emergencies.
         """
         if self.worker is None or not self.worker.isRunning():
             return
 
-        self.worker.exit()
-        QMessageBox.information(
-            self, "Stop worker", "Current worker is stopped."
+        res = QMessageBox.question(
+            self,
+            "Stop action",
+            "Are you sure you want to stop the current action?",
         )
+        if res == QMessageBox.No:
+            return
+
+        # NOTE: normally, threads should be stopped using quit() instead of
+        # terminate(). But here, the blocking method with an infinite loop is
+        # executed outside the worker class, so using terminate() is the only
+        # solution which directly stops the thread.
+        # See: https://doc.qt.io/qtforpython-5/PySide2/QtCore/QThread.html
+        self.worker.terminate()
         self._change_button_states(self._saved_button_states)
 
     def _change_button_states(self, button_states: Dict[str, bool]) -> None:
