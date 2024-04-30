@@ -246,7 +246,7 @@ class MainWindow(QWidget):
             QMessageBox.information(
                 self, "Fetch jobs", "Job fetching completed"
             )
-            # TODO-7: bit ugly
+            # TODO-5: bit ugly
             self._unlock_buttons()
             self._lock_buttons(["filter_job_descriptions", "stop_worker"])
         else:
@@ -305,7 +305,7 @@ class MainWindow(QWidget):
             "Fetch job descriptions",
             "Fetching of job descriptions is completed",
         )
-        # TODO-7: bit ugly
+        # TODO-5: bit ugly
         self._unlock_buttons()
         self._lock_buttons(["stop_worker"])
 
