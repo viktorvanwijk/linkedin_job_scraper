@@ -557,11 +557,14 @@ class PandasModel(QAbstractTableModel):
         else:
             return super().headerData(section, orientation, role)
 
-    def removeRows(self, row, count, parent=QModelIndex()):
-        self._l.debug(f"Deleting rows from '{row}' to '{row + count - 1}'.")
-        self.beginRemoveRows(parent, row, row + count - 1)
-        for _ in range(count):
-            self._data.drop(self._data.index[row], inplace=True)
+    # TODO: modifying this signature is not the nicest thing to do probably, as
+    #  it violates the L in SOLID. It is no longer interchangable with it parent
+    #  class QAbstractTableModel.
+    def removeRows(self, rows, count, parent=QModelIndex()):
+        self._l.debug(f"Deleting rows {rows}.")
+        self.beginRemoveRows(parent, rows[0], rows[-1])
+        indices = [self._data.index[r] for r in rows]
+        self._data.drop(indices, inplace=True)
         self.endRemoveRows()
         self.layoutChanged.emit()
         self._l.debug(f"Dataframe length after deleting: {self._data.shape[0]}")
@@ -601,9 +604,7 @@ class JobTableViewer(QTableView):
         self.setSizeAdjustPolicy(QHeaderView.AdjustToContents)
         self.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_MIN_EXPANDING)
         self.setSelectionBehavior(QAbstractItemView.SelectRows)
-        # NOTE: ContiguousSelection is needed as PandasModel.removeRows() does
-        # not support arbitrary row selection
-        self.setSelectionMode(QAbstractItemView.ContiguousSelection)
+        self.setSelectionMode(QAbstractItemView.ExtendedSelection)
         self.setEditTriggers(QAbstractItemView.NoEditTriggers)
         self.setSortingEnabled(True)
 
@@ -651,7 +652,7 @@ class JobTableViewer(QTableView):
             rows = self.selectionModel().selectedRows()
             if len(rows) == 0:
                 return
-            self.model().removeRows(rows[0].row(), len(rows), rows[0])
+            self.model().removeRows([r.row() for r in rows], len(rows), rows[0])
             self.selectionModel().clearSelection()
         super().keyPressEvent(e)
 
