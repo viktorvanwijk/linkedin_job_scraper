@@ -72,6 +72,7 @@ class MainWindow(QWidget):
         self.metadata = None
 
         self._last_button_states = None
+        self._results_saved: bool = None
 
         self._init_ui()
         self._connect_signals()
@@ -180,6 +181,13 @@ class MainWindow(QWidget):
         )
         self.buttons["stop_worker"].clicked.connect(self._callback_stop_worker)
 
+    def closeEvent(self, a0) -> None:
+        """Override super().closeEvent() to ask the user if they want to quit
+        without saving.
+        """
+        if not self._check_continue_results_saved("quit"):
+            a0.ignore()
+
     def _callback_test_session(self) -> None:
         """Callback for the 'Test session' (test_session) button."""
         current_states = self._get_current_button_states()
@@ -220,6 +228,9 @@ class MainWindow(QWidget):
         they are ok. If the number of fetched jobs is zero, an information
         message box will be displayed
         """
+        if not self._check_continue_results_saved("continue"):
+            return
+
         settings_dict = self._get_settings_dict()
         if not self._check_settings_dict(settings_dict):
             return
@@ -249,6 +260,7 @@ class MainWindow(QWidget):
             # TODO-5: bit ugly
             self._unlock_buttons()
             self._lock_buttons(["filter_job_descriptions", "stop_worker"])
+            self._results_saved = False
         else:
             QMessageBox.information(
                 self, "Fetch jobs", "No jobs available with current settings"
@@ -341,6 +353,7 @@ class MainWindow(QWidget):
             self.metadata,
             folder=self.save_folder,
         )
+        self._results_saved = True
         QMessageBox.information(self, "Saving", "Saving is completed")
 
     def _callback_reset_table_view(self) -> None:
@@ -464,6 +477,34 @@ class MainWindow(QWidget):
                 )
                 return False
         return True
+
+    def _check_continue_results_saved(self, action) -> bool:
+        """Check if the current results have been saved and ask the user to
+        continue (through a messagebox) if they were not saved.
+
+        Parameters
+        ----------
+        action : str
+            Action which will be performed, can be one of `continue|quit`.
+
+        Returns
+        -------
+        bool
+            True if the user wants to continue and/or if the results already
+            have been saved, False otherwise.
+        """
+        assert action in ("continue", "quit")
+
+        if self._results_saved in (True, None):
+            return True
+
+        res = QMessageBox.question(
+            self,
+            "Saving results",
+            "The current results have not been saved yet. Are you sure you "
+            f"want to {action}?",
+        )
+        return res == QMessageBox.Yes
 
 
 class Worker(QThread):
