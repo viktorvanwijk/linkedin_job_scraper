@@ -240,7 +240,6 @@ class MainWindow(QWidget):
         self.worker = Worker(
             self.scraper.scrape_jobs, **settings_dict
         )
-        self.worker.finished.connect(self.worker.deleteLater)
         self.worker.result.connect(self._slot_scrape_jobs_result)
         self.worker.start()
         self._unlock_buttons(["stop_worker"])
@@ -304,7 +303,6 @@ class MainWindow(QWidget):
         self.worker = Worker(
             self.scraper.get_job_descriptions, self.df, current_indices
         )
-        self.worker.finished.connect(self.worker.deleteLater)
         self.worker.result.connect(self._slot_get_job_descriptions_result)
         self.worker.start()
         self._unlock_buttons(["stop_worker"])
@@ -531,6 +529,8 @@ class Worker(QThread):
         self.function = function
         self.func_args = func_args
         self.func_kwargs = func_kwargs
+
+        self.finished.connect(self.deleteLater)
 
     def run(self) -> None:
         """Run thread.
