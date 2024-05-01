@@ -63,7 +63,7 @@ class MainWindow(QWidget):
 
         self.session: LinkedinSession = session
         self.scraper: LinkedinJobScraper = scraper
-        self.worker: Optional[Worker] = None
+        self.worker: Worker = None
         self.save_folder = save_folder
 
         self._l = logger.getChild(self.__class__.__name__)
@@ -71,7 +71,7 @@ class MainWindow(QWidget):
         self.df = None
         self.metadata = None
 
-        self._last_button_states = None
+        self._last_button_states: Dict[str, bool] = None
         self._results_saved: bool = None
 
         self._init_ui()
