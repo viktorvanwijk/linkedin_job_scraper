@@ -181,13 +181,6 @@ class MainWindow(QWidget):
         )
         self.buttons["stop_worker"].clicked.connect(self._callback_stop_worker)
 
-    def closeEvent(self, a0) -> None:
-        """Override super().closeEvent() to ask the user if they want to quit
-        without saving.
-        """
-        if not self._check_continue_results_saved("quit"):
-            a0.ignore()
-
     def _callback_test_session(self) -> None:
         """Callback for the 'Test session' (test_session) button."""
         current_states = self._get_current_button_states()
@@ -503,6 +496,13 @@ class MainWindow(QWidget):
             f"want to {action}?",
         )
         return res == QMessageBox.Yes
+
+    def closeEvent(self, a0) -> None:
+        """Override super().closeEvent() to ask the user if they want to quit
+        without saving.
+        """
+        if not self._check_continue_results_saved("quit"):
+            a0.ignore()
 
 
 class Worker(QThread):
