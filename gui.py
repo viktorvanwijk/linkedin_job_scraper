@@ -63,7 +63,7 @@ class MainWindow(QWidget):
 
         self.session: LinkedinSession = session
         self.scraper: LinkedinJobScraper = scraper
-        self.worker: Optional[Worker] = None
+        self.worker: Worker = None
         self.save_folder = save_folder
 
         self._l = logger.getChild(self.__class__.__name__)
@@ -71,7 +71,8 @@ class MainWindow(QWidget):
         self.df = None
         self.metadata = None
 
-        self._saved_button_states = None
+        self._last_button_states: Dict[str, bool] = None
+        self._results_saved: bool = None
 
         self._init_ui()
         self._connect_signals()
@@ -220,6 +221,9 @@ class MainWindow(QWidget):
         they are ok. If the number of fetched jobs is zero, an information
         message box will be displayed
         """
+        if not self._check_continue_results_saved("continue"):
+            return
+
         settings_dict = self._get_settings_dict()
         if not self._check_settings_dict(settings_dict):
             return
@@ -229,7 +233,6 @@ class MainWindow(QWidget):
         self.worker = Worker(
             self.scraper.scrape_jobs, **settings_dict
         )
-        self.worker.finished.connect(self.worker.deleteLater)
         self.worker.result.connect(self._slot_scrape_jobs_result)
         self.worker.start()
         self._unlock_buttons(["stop_worker"])
@@ -246,9 +249,10 @@ class MainWindow(QWidget):
             QMessageBox.information(
                 self, "Fetch jobs", "Job fetching completed"
             )
-            # TODO-7: bit ugly
+            # TODO-5: bit ugly
             self._unlock_buttons()
             self._lock_buttons(["filter_job_descriptions", "stop_worker"])
+            self._results_saved = False
         else:
             QMessageBox.information(
                 self, "Fetch jobs", "No jobs available with current settings"
@@ -292,7 +296,6 @@ class MainWindow(QWidget):
         self.worker = Worker(
             self.scraper.get_job_descriptions, self.df, current_indices
         )
-        self.worker.finished.connect(self.worker.deleteLater)
         self.worker.result.connect(self._slot_get_job_descriptions_result)
         self.worker.start()
         self._unlock_buttons(["stop_worker"])
@@ -305,7 +308,7 @@ class MainWindow(QWidget):
             "Fetch job descriptions",
             "Fetching of job descriptions is completed",
         )
-        # TODO-7: bit ugly
+        # TODO-5: bit ugly
         self._unlock_buttons()
         self._lock_buttons(["stop_worker"])
 
@@ -341,6 +344,7 @@ class MainWindow(QWidget):
             self.metadata,
             folder=self.save_folder,
         )
+        self._results_saved = True
         QMessageBox.information(self, "Saving", "Saving is completed")
 
     def _callback_reset_table_view(self) -> None:
@@ -375,7 +379,7 @@ class MainWindow(QWidget):
         # solution which directly stops the thread.
         # See: https://doc.qt.io/qtforpython-5/PySide2/QtCore/QThread.html
         self.worker.terminate()
-        self._change_button_states(self._saved_button_states)
+        self._change_button_states(self._last_button_states)
 
     def _change_button_states(self, button_states: Dict[str, bool]) -> None:
         """Change button states.
@@ -426,7 +430,7 @@ class MainWindow(QWidget):
 
     def _save_current_button_states(self) -> None:
         """Save the current button states."""
-        self._saved_button_states = self._get_current_button_states()
+        self._last_button_states = self._get_current_button_states()
 
     def _get_settings_dict(self) -> Dict[str, Any]:
         """Create a dictionary of all specified settings that are needed for
@@ -455,7 +459,7 @@ class MainWindow(QWidget):
         Returns
         -------
         bool
-            False if one of the settings was not specified, True if ok.
+            True if all settings were specified, False otherwise.
         """
         for param, value in settings_dict.items():
             if value in ("", None, []):
@@ -464,6 +468,41 @@ class MainWindow(QWidget):
                 )
                 return False
         return True
+
+    def _check_continue_results_saved(self, action) -> bool:
+        """Check if the current results have been saved and ask the user to
+        continue (through a messagebox) if they were not saved.
+
+        Parameters
+        ----------
+        action : str
+            Action which will be performed, can be one of `continue|quit`.
+
+        Returns
+        -------
+        bool
+            True if the user wants to continue and/or if the results already
+            have been saved, False otherwise.
+        """
+        assert action in ("continue", "quit")
+
+        if self._results_saved in (True, None):
+            return True
+
+        res = QMessageBox.question(
+            self,
+            "Saving results",
+            "The current results have not been saved yet. Are you sure you "
+            f"want to {action}?",
+        )
+        return res == QMessageBox.Yes
+
+    def closeEvent(self, a0) -> None:
+        """Override QWidget.closeEvent() to ask the user if they want to quit
+        without saving.
+        """
+        if not self._check_continue_results_saved("quit"):
+            a0.ignore()
 
 
 class Worker(QThread):
@@ -490,6 +529,8 @@ class Worker(QThread):
         self.function = function
         self.func_args = func_args
         self.func_kwargs = func_kwargs
+
+        self.finished.connect(self.deleteLater)
 
     def run(self) -> None:
         """Run thread.
