@@ -498,7 +498,7 @@ class MainWindow(QWidget):
         return res == QMessageBox.Yes
 
     def closeEvent(self, a0) -> None:
-        """Override super().closeEvent() to ask the user if they want to quit
+        """Override QWidget.closeEvent() to ask the user if they want to quit
         without saving.
         """
         if not self._check_continue_results_saved("quit"):
