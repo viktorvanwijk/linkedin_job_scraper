@@ -557,9 +557,6 @@ class PandasModel(QAbstractTableModel):
         else:
             return super().headerData(section, orientation, role)
 
-    # TODO: modifying this signature is not the nicest thing to do probably, as
-    #  it violates the L in SOLID. It is no longer interchangable with it parent
-    #  class QAbstractTableModel.
     def removeRows(self, rows, count, parent=QModelIndex()):
         self._l.debug(f"Deleting rows {rows}.")
         self.beginRemoveRows(parent, rows[0], rows[-1])
