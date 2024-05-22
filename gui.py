@@ -43,7 +43,7 @@ class MainWindow(QWidget):
     MIN_WIDTH = 1280
     MIN_HEIGHT = 720
 
-    class UNLOCKED_BUTTONS(Enum):
+    class BUTTON_GROUPS(Enum):
         AFTER_INIT = ("test_session", "get_n_jobs", "scrape_jobs")
         AFTER_SCRAPE = AFTER_INIT + (
             "filter_job_titles",
@@ -83,7 +83,7 @@ class MainWindow(QWidget):
         self.df = None
         self.metadata = None
 
-        self._last_button_states: Enum = self.UNLOCKED_BUTTONS.AFTER_INIT
+        self._last_button_states: Enum = self.BUTTON_GROUPS.AFTER_INIT
         self._results_saved: bool = None
 
         self._init_ui()
@@ -222,7 +222,7 @@ class MainWindow(QWidget):
         )
         self.worker.result.connect(self._slot_scrape_jobs_result)
         self.worker.start()
-        self._unlock_buttons(self.UNLOCKED_BUTTONS.WHILE_ACTION)
+        self._unlock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
 
     def _slot_scrape_jobs_result(self, res: Tuple) -> None:
         """Slot for the scraping jobs result."""
@@ -236,13 +236,13 @@ class MainWindow(QWidget):
             QMessageBox.information(
                 self, "Fetch jobs", "Job fetching completed"
             )
-            self._last_button_states = self.UNLOCKED_BUTTONS.AFTER_SCRAPE
+            self._last_button_states = self.BUTTON_GROUPS.AFTER_SCRAPE
             self._results_saved = False
         else:
             QMessageBox.information(
                 self, "Fetch jobs", "No jobs available with current settings"
             )
-        self._lock_buttons(self.UNLOCKED_BUTTONS.WHILE_ACTION)
+        self._lock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
         self._unlock_buttons(self._last_button_states)
 
     def _callback_filter_job_titles(self) -> None:
@@ -282,7 +282,7 @@ class MainWindow(QWidget):
         )
         self.worker.result.connect(self._slot_get_job_descriptions_result)
         self.worker.start()
-        self._unlock_buttons(self.UNLOCKED_BUTTONS.WHILE_ACTION)
+        self._unlock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
 
     def _slot_get_job_descriptions_result(self, res: DataFrame) -> None:
         """Slot for the scraping jobs result."""
@@ -292,8 +292,8 @@ class MainWindow(QWidget):
             "Fetch job descriptions",
             "Fetching of job descriptions is completed",
         )
-        self._last_button_states = self.UNLOCKED_BUTTONS.AFTER_JOB_DESCR
-        self._lock_buttons(self.UNLOCKED_BUTTONS.WHILE_ACTION)
+        self._last_button_states = self.BUTTON_GROUPS.AFTER_JOB_DESCR
+        self._lock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
         self._unlock_buttons(self._last_button_states)
 
     def _callback_filter_job_descriptions(self) -> None:
@@ -363,7 +363,7 @@ class MainWindow(QWidget):
         # solution which directly stops the thread.
         # See: https://doc.qt.io/qtforpython-5/PySide2/QtCore/QThread.html
         self.worker.terminate()
-        self._lock_buttons(self.UNLOCKED_BUTTONS.WHILE_ACTION)
+        self._lock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
         self._unlock_buttons(self._last_button_states)
 
     def _change_button_states(self, button_states: Dict[str, bool]) -> None:
