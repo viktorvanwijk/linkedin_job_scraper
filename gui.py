@@ -45,13 +45,13 @@ class MainWindow(QWidget):
 
     class UNLOCKED_BUTTONS(Enum):
         AFTER_INIT = ("test_session", "get_n_jobs", "scrape_jobs")
-        AFTER_SCRAPE = AFTER_INIT.value + (
+        AFTER_SCRAPE = AFTER_INIT + (
             "filter_job_titles",
             "get_job_descriptions",
             "save_results",
             "reset_table_view"
         )
-        AFTER_JOB_DESCR = AFTER_SCRAPE.value + ("filter_job_descriptions",)
+        AFTER_JOB_DESCR = AFTER_SCRAPE + ("filter_job_descriptions",)
         WHILE_ACTION = ("stop_worker",)
 
     def __init__(
@@ -83,7 +83,7 @@ class MainWindow(QWidget):
         self.df = None
         self.metadata = None
 
-        self._last_button_states: Dict[str, bool] = None
+        self._last_button_states: Enum = self.UNLOCKED_BUTTONS.AFTER_INIT
         self._results_saved: bool = None
 
         self._init_ui()
@@ -180,18 +180,15 @@ class MainWindow(QWidget):
 
     def _callback_test_session(self) -> None:
         """Callback for the 'Test session' (test_session) button."""
-        current_states = self._get_current_button_states()
         self._lock_buttons()
         try:
             self.session.test_session()
-            current_states["get_n_jobs"] = True
-            current_states["scrape_jobs"] = True
             QMessageBox.information(self, "Test session", "Testing successful.")
         except (SystemError, TimeoutError, BadStatusCode) as e:
             QMessageBox.critical(
                 self, "Test session", f"Error during testing of session: {e}"
             )
-        self._change_button_states(current_states)
+        self._unlock_buttons(self._last_button_states)
 
     def _callback_get_n_jobs(self) -> None:
         """Callback for the 'Get number of jobs' (get_n_jobs) button.
@@ -203,13 +200,12 @@ class MainWindow(QWidget):
         if not self._check_settings_dict(settings_dict):
             return
 
-        current_states = self._get_current_button_states()
         self._lock_buttons()
         n_jobs = self.scraper.determine_n_jobs(**settings_dict)
         QMessageBox.information(
             self, "Number of jobs", f"Number of jobs: {n_jobs}"
         )
-        self._change_button_states(current_states)
+        self._unlock_buttons(self._last_button_states)
 
     def _callback_scrape_jobs(self) -> None:
         """Callback for the 'Fetch jobs' (scrape_jobs) button.
@@ -225,14 +221,13 @@ class MainWindow(QWidget):
         if not self._check_settings_dict(settings_dict):
             return
 
-        self._save_current_button_states()
         self._lock_buttons()
         self.worker = Worker(
             self.scraper.scrape_jobs, **settings_dict
         )
         self.worker.result.connect(self._slot_scrape_jobs_result)
         self.worker.start()
-        self._unlock_buttons(["stop_worker"])
+        self._unlock_buttons(self.UNLOCKED_BUTTONS.WHILE_ACTION)
 
     def _slot_scrape_jobs_result(self, res: Tuple) -> None:
         """Slot for the scraping jobs result."""
@@ -246,15 +241,14 @@ class MainWindow(QWidget):
             QMessageBox.information(
                 self, "Fetch jobs", "Job fetching completed"
             )
-            # TODO-5: bit ugly
-            self._unlock_buttons()
-            self._lock_buttons(["filter_job_descriptions", "stop_worker"])
+            self._last_button_states = self.UNLOCKED_BUTTONS.AFTER_SCRAPE
             self._results_saved = False
         else:
             QMessageBox.information(
                 self, "Fetch jobs", "No jobs available with current settings"
             )
-            self._change_button_states(self._last_button_states)
+        self._lock_buttons(self.UNLOCKED_BUTTONS.WHILE_ACTION)
+        self._unlock_buttons(self._last_button_states)
 
     def _callback_filter_job_titles(self) -> None:
         """Callback for the 'Filter job titles' (filter_job_titles) button.
@@ -273,12 +267,11 @@ class MainWindow(QWidget):
             )
             return
 
-        current_button_states = self._get_current_button_states()
         self._lock_buttons()
         current_indices = self.job_table.get_current_dataframe_indices()
         df_res = filter_job_titles(self.df, *filter_lists, current_indices)
         self.job_table.display_jobs(df_res)
-        self._change_button_states(current_button_states)
+        self._unlock_buttons(self._last_button_states)
 
     def _callback_get_job_descriptions(self) -> None:
         """Callback for the 'Fetch job descriptions' (get_job_descriptions)
@@ -286,7 +279,6 @@ class MainWindow(QWidget):
 
         Shows an information message box upon completion.
         """
-        self._save_current_button_states()
         self._lock_buttons()
         current_indices = self.job_table.get_current_dataframe_indices()
         self._l.debug(f"Get job descriptions: {current_indices}")
@@ -295,7 +287,7 @@ class MainWindow(QWidget):
         )
         self.worker.result.connect(self._slot_get_job_descriptions_result)
         self.worker.start()
-        self._unlock_buttons(["stop_worker"])
+        self._unlock_buttons(self.UNLOCKED_BUTTONS.WHILE_ACTION)
 
     def _slot_get_job_descriptions_result(self, res: DataFrame) -> None:
         """Slot for the scraping jobs result."""
@@ -305,9 +297,9 @@ class MainWindow(QWidget):
             "Fetch job descriptions",
             "Fetching of job descriptions is completed",
         )
-        # TODO-5: bit ugly
-        self._unlock_buttons()
-        self._lock_buttons(["stop_worker"])
+        self._last_button_states = self.UNLOCKED_BUTTONS.AFTER_JOB_DESCR
+        self._lock_buttons(self.UNLOCKED_BUTTONS.WHILE_ACTION)
+        self._unlock_buttons(self._last_button_states)
 
     def _callback_filter_job_descriptions(self) -> None:
         """Callback for the 'Filter job descriptions' (filter_job_descriptions)
@@ -376,7 +368,8 @@ class MainWindow(QWidget):
         # solution which directly stops the thread.
         # See: https://doc.qt.io/qtforpython-5/PySide2/QtCore/QThread.html
         self.worker.terminate()
-        self._change_button_states(self._last_button_states)
+        self._lock_buttons(self.UNLOCKED_BUTTONS.WHILE_ACTION)
+        self._unlock_buttons(self._last_button_states)
 
     def _change_button_states(self, button_states: Dict[str, bool]) -> None:
         """Change button states.
@@ -388,46 +381,25 @@ class MainWindow(QWidget):
         for name, state in button_states.items():
             self.buttons[name].setEnabled(state)
 
-    def _lock_buttons(self, buttons: Optional[Iterable[str]] = None) -> None:
+    def _lock_buttons(self, buttons: Optional[Enum] = None) -> None:
         """Lock buttons.
 
-        buttons : Optional[Iterable[str]]
-            Iterable of button names to lock. If None,
-            all buttons will be locked.
+        buttons : Optional[Enum]
+            Unlocked buttons enum. If None,  all buttons will be locked.
         """
-        if buttons is None:
-            buttons = self.buttons.keys()
+        buttons = buttons.value if buttons is not None else self.buttons.keys()
         button_states = dict(zip(buttons, [False] * len(buttons)))
         self._change_button_states(button_states)
 
-    def _unlock_buttons(self, buttons: Optional[Iterable[str]] = None) -> None:
+    def _unlock_buttons(self, buttons: Optional[Enum] = None) -> None:
         """Unlock buttons.
 
-        buttons : Optional[Iterable[str]]
-            Iterable of button names to unlock. If None,
-            all buttons will be unlocked.
+        buttons : Optional[Enum[str]]
+            Unlocked buttons enum. If None, all buttons will be unlocked.
         """
-        if buttons is None:
-            buttons = self.buttons.keys()
+        buttons = buttons.value if buttons is not None else self.buttons.keys()
         button_states = dict(zip(buttons, [True] * len(buttons)))
         self._change_button_states(button_states)
-
-    def _get_current_button_states(self) -> Dict[str, bool]:
-        """Return the current states (enabled or disabled) of all buttons.
-
-        Returns
-        -------
-        Dict[str, bool]
-            Dictionary with button names as keys and boolean as values (True for
-            enabled, False for disabled).
-        """
-        return {
-            name: button.isEnabled() for name, button in self.buttons.items()
-        }
-
-    def _save_current_button_states(self) -> None:
-        """Save the current button states."""
-        self._last_button_states = self._get_current_button_states()
 
     def _get_settings_dict(self) -> Dict[str, Any]:
         """Create a dictionary of all specified settings that are needed for
