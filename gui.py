@@ -349,12 +349,14 @@ class MainWindow(QWidget):
         if self.worker is None or not self.worker.isRunning():
             return
 
-        res = QMessageBox.question(
+        mb = question(
             self,
             "Stop action",
             "Are you sure you want to stop the current action?",
         )
-        if res == QMessageBox.No:
+        self.worker.finished.connect(mb.close)
+        res = mb.exec_()
+        if res == QMessageBox.No or res is None:
             return
 
         # NOTE: normally, threads should be stopped using quit() instead of
@@ -896,6 +898,31 @@ def main() -> None:
     logger.handlers.clear()
     session.close()
     sys.exit()
+
+
+def question(parent: QWidget, title: str, text: str) -> QMessageBox:
+    """Create question QMessageBox.
+
+    Parameters
+    ----------
+    parent : QWidget
+        Parent widget.
+    title : str
+        Window title.
+    text : str
+        Dialog text.
+
+    Returns
+    -------
+    mb : QMessageBox
+    """
+    mb = QMessageBox(parent)
+    mb.setIcon(QMessageBox.Question)
+    mb.setText(text)
+    mb.setWindowTitle(title)
+    mb.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
+
+    return mb
 
 
 if __name__ == "__main__":
