@@ -7,7 +7,7 @@ Created on Mon Mar 11 14:16:09 2024
 
 import os
 import sys
-from typing import Any, Dict, Iterable, List, Optional, Union, Tuple
+from typing import Any, Dict, Iterable, List, Optional, Union, Tuple, Callable
 
 import pandas as pd
 from pandas import DataFrame
@@ -119,17 +119,22 @@ class MainWindow(QWidget):
         self.description_filter_input = FilterKeywordsLayout(
             "Description keywords", DESCRIPTION_KEYWORDS
         )
-        self.buttons = {
-            "test_session": create_button("Test session", True),
-            "get_n_jobs": create_button("Get number of jobs", True),
-            "scrape_jobs": create_button("Fetch jobs", True),
-            "filter_job_titles": create_button("Filter job titles"),
-            "get_job_descriptions": create_button("Fetch job descriptions"),
-            "filter_job_descriptions": create_button("Filter job descriptions"),
-            "save_results": create_button("Save results"),
-            "reset_table_view": create_button("Reset filters"),
-            "stop_worker": create_button("Stop"),
-        }
+        self.buttons = {}
+        # fmt: off
+        buttons = [
+            ("test_session", "Test session", self._callback_test_session, True),
+            ("get_n_jobs", "Get number of jobs", self._callback_get_n_jobs, True),
+            ("scrape_jobs", "Fetch jobs", self._callback_scrape_jobs, True),
+            ("filter_job_titles", "Filter job titles", self._callback_filter_job_titles, False),
+            ("get_job_descriptions", "Fetch job descriptions", self._callback_get_job_descriptions, False),
+            ("filter_job_descriptions", "Filter job descriptions", self._callback_filter_job_descriptions, False),
+            ("save_results", "Save results", self._callback_save_results, False),
+            ("reset_table_view", "Reset filters", self._callback_reset_table_view, False),
+            ("stop_worker", "Stop", self._callback_stop_worker, False),
+        ]
+        for button in buttons:
+            self._create_button(*button)
+        # fmt: on
 
         # Right side widgets
         jobs_groupbox = QGroupBox("Jobs")
@@ -159,27 +164,7 @@ class MainWindow(QWidget):
 
     def _connect_signals(self) -> None:
         """Connect the buttons to their corresponding callback methods."""
-        self.buttons["test_session"].clicked.connect(
-            self._callback_test_session
-        )
-        self.buttons["get_n_jobs"].clicked.connect(self._callback_get_n_jobs)
-        self.buttons["scrape_jobs"].clicked.connect(self._callback_scrape_jobs)
-        self.buttons["filter_job_titles"].clicked.connect(
-            self._callback_filter_job_titles
-        )
-        self.buttons["get_job_descriptions"].clicked.connect(
-            self._callback_get_job_descriptions
-        )
-        self.buttons["filter_job_descriptions"].clicked.connect(
-            self._callback_filter_job_descriptions
-        )
-        self.buttons["save_results"].clicked.connect(
-            self._callback_save_results
-        )
-        self.buttons["reset_table_view"].clicked.connect(
-            self._callback_reset_table_view
-        )
-        self.buttons["stop_worker"].clicked.connect(self._callback_stop_worker)
+        pass
 
     def _callback_test_session(self) -> None:
         """Callback for the 'Test session' (test_session) button."""
@@ -503,6 +488,35 @@ class MainWindow(QWidget):
         """
         if not self._check_continue_results_saved("quit"):
             a0.ignore()
+
+    def _create_button(
+        self,
+        name: str,
+        label: str,
+        callback: Callable,
+        enabled_by_default: bool = False
+    ) -> None:
+        """Create button with label and specify if enabled by default.
+        Sets size policy of the button to minimum expanding horizontally,
+        and fixed vertically.
+
+        Parameters
+        ----------
+        name : str
+            Button name.
+        label : str
+            Button label.
+        callback : Callable
+            Callback to connect to the button.
+        enabled_by_default : bool
+            Indicates if the button is enabled by default.
+
+        """
+        button = QPushButton(label)
+        button.setEnabled(enabled_by_default)
+        button.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
+        button.clicked.connect(callback)
+        self.buttons[name] = button
 
 
 class Worker(QThread):
@@ -887,28 +901,6 @@ class FilterKeywordsLayout(QVBoxLayout):
             return None
         filter_list = text.split(",")
         return [w.strip() for w in filter_list if w != ""]
-
-
-def create_button(label: str, enabled_by_default: bool = False) -> QPushButton:
-    """Create button with label and specify if enabled by default.
-    Sets size policy of the button to minimum expanding horizontally,
-    and fixed vertically.
-
-    Parameters
-    ----------
-    label : str
-        Button label.
-    enabled_by_default : bool
-        Indicates if the button is enabled by default.
-
-    Returns
-    -------
-    button : QPushButton
-    """
-    button = QPushButton(label)
-    button.setEnabled(enabled_by_default)
-    button.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
-    return button
 
 
 def main() -> None:
