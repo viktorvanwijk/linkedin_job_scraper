@@ -380,7 +380,7 @@ class MainWindow(QWidget):
         """Lock buttons.
 
         buttons : Optional[Enum]
-            Unlocked buttons enum. If None,  all buttons will be locked.
+            Button group enum. If None,  all buttons will be locked.
         """
         buttons = buttons.value if buttons is not None else self.buttons.keys()
         button_states = dict(zip(buttons, [False] * len(buttons)))
@@ -390,7 +390,7 @@ class MainWindow(QWidget):
         """Unlock buttons.
 
         buttons : Optional[Enum[str]]
-            Unlocked buttons enum. If None, all buttons will be unlocked.
+            Button group enum. If None, all buttons will be unlocked.
         """
         buttons = buttons.value if buttons is not None else self.buttons.keys()
         button_states = dict(zip(buttons, [True] * len(buttons)))
