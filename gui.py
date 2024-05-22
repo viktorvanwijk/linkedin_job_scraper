@@ -87,7 +87,6 @@ class MainWindow(QWidget):
         self._results_saved: bool = None
 
         self._init_ui()
-        self._connect_signals()
 
     def _init_ui(self) -> None:
         """Initialize all UI elements."""
@@ -173,10 +172,6 @@ class MainWindow(QWidget):
 
         layout.addLayout(layout_l)
         layout.addWidget(jobs_groupbox, 1)
-
-    def _connect_signals(self) -> None:
-        """Connect the buttons to their corresponding callback methods."""
-        pass
 
     def _callback_test_session(self) -> None:
         """Callback for the 'Test session' (test_session) button."""
