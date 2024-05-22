@@ -7,6 +7,7 @@ Created on Mon Mar 11 14:16:09 2024
 
 import os
 import sys
+from enum import Enum
 from typing import Any, Dict, Iterable, List, Optional, Union, Tuple, Callable
 
 import pandas as pd
@@ -41,6 +42,17 @@ PATH_ICONS = f"{os.path.dirname(__file__)}\\icons"
 class MainWindow(QWidget):
     MIN_WIDTH = 1280
     MIN_HEIGHT = 720
+
+    class UNLOCKED_BUTTONS(Enum):
+        AFTER_INIT = ("test_session", "get_n_jobs", "scrape_jobs")
+        AFTER_SCRAPE = AFTER_INIT.value + (
+            "filter_job_titles",
+            "get_job_descriptions",
+            "save_results",
+            "reset_table_view"
+        )
+        AFTER_JOB_DESCR = AFTER_SCRAPE.value + ("filter_job_descriptions",)
+        WHILE_ACTION = ("stop_worker",)
 
     def __init__(
         self,
@@ -242,7 +254,7 @@ class MainWindow(QWidget):
             QMessageBox.information(
                 self, "Fetch jobs", "No jobs available with current settings"
             )
-            self._unlock_buttons(["test_session", "get_n_jobs", "scrape_jobs"])
+            self._change_button_states(self._last_button_states)
 
     def _callback_filter_job_titles(self) -> None:
         """Callback for the 'Filter job titles' (filter_job_titles) button.
