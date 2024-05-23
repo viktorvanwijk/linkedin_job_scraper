@@ -884,22 +884,6 @@ class FilterKeywordsLayout(QVBoxLayout):
         return [w.strip() for w in filter_list if w != ""]
 
 
-def main() -> None:
-    session = LinkedinSession()
-    scraper = LinkedinJobScraper(session)
-
-    """Main app initialization and main loop."""
-    app = QApplication(sys.argv)
-    app.setQuitOnLastWindowClosed(True)
-    widget = MainWindow(session, scraper, "../results")
-    widget.show()
-    app.exec_()
-
-    logger.handlers.clear()
-    session.close()
-    sys.exit()
-
-
 def question_messagebox(parent: QWidget, title: str, text: str) -> QMessageBox:
     """Create question QMessageBox.
 
@@ -923,6 +907,22 @@ def question_messagebox(parent: QWidget, title: str, text: str) -> QMessageBox:
     mb.setStandardButtons(QMessageBox.Yes | QMessageBox.No)
 
     return mb
+
+
+def main() -> None:
+    session = LinkedinSession()
+    scraper = LinkedinJobScraper(session)
+
+    """Main app initialization and main loop."""
+    app = QApplication(sys.argv)
+    app.setQuitOnLastWindowClosed(True)
+    widget = MainWindow(session, scraper, "../results")
+    widget.show()
+    app.exec_()
+
+    logger.handlers.clear()
+    session.close()
+    sys.exit()
 
 
 if __name__ == "__main__":
