@@ -196,11 +196,18 @@ class MainWindow(QWidget):
             return
 
         self._lock_buttons()
-        n_jobs = self.scraper.determine_n_jobs(**settings_dict)
+        self.worker = Worker(self.scraper.determine_n_jobs, **settings_dict)
+        self.worker.result.connect(self._slot_get_n_jobs)
+        self.worker.start()
+        self._unlock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
+
+    def _slot_get_n_jobs(self, n_jobs: int) -> None:
+        """Slot for the get number of jobs result."""
         QMessageBox.information(
             self, "Number of jobs", f"Number of jobs: {n_jobs}"
         )
         self._unlock_buttons(self._last_button_states)
+        self._lock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
 
     def _callback_scrape_jobs(self) -> None:
         """Callback for the 'Fetch jobs' (scrape_jobs) button.
