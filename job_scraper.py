@@ -680,6 +680,40 @@ def contains_keywords(string: str, keywords: Iterable[str]) -> bool:
     return False
 
 
+def mark_keywords_html(
+    string: str, keywords: Iterable[str]
+) -> Tuple[bool, str]:
+    """Checks if a string contains any of the passed keywords
+    (case-insensitive) and return a new string where all the found keywords are
+    marked in HTML.
+
+    Parameters
+    ----------
+    string : str
+    keywords : Iterable[str]
+        Iterable of keywords to search for.
+
+    Returns
+    -------
+    contains_keywords : bool
+        True if any of the keywords are in `string`, False if not.
+    string_marked : str
+        Same as `string` but with all the found keywords marked using HTML.
+    """
+    string_marked = string
+    contains_keyword = False
+    for keyword in keywords:
+        string_marked, count = re.subn(
+            pattern=keyword,
+            repl=C.HTML_KEYWORD_MARK.format(keyword=keyword.capitalize()),
+            string=string_marked,
+            flags=re.RegexFlag.IGNORECASE,
+        )
+        contains_keyword = contains_keyword | count > 0
+
+    return contains_keyword, string_marked
+
+
 def save_job_dataframe_to_html_file(
     df: DataFrame,
     metadata: Dict[str, Any],
