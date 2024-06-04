@@ -130,6 +130,15 @@ class MainWindow(QWidget):
         self.description_filter_input = FilterKeywordsLayout(
             "Description keywords", DESCRIPTION_KEYWORDS
         )
+        self.mark_descr_keywords_checkbox = QCheckBox(
+            "Mark description keywords"
+        )
+        self.mark_descr_keywords_checkbox.setChecked(True)
+        self.mark_descr_keywords_checkbox.setToolTip(
+            "Dictates whether description keywords will be marked in the "
+            "results. Note: will be applied after pressing the "
+            "'Filter job descriptions' button."
+        )
         self.buttons = {}
         # fmt: off
         buttons = [
@@ -160,6 +169,7 @@ class MainWindow(QWidget):
         for tfl in self.title_filter_layouts.values():
             layout_settings.addLayout(tfl)
         layout_settings.addLayout(self.description_filter_input)
+        layout_settings.addWidget(self.mark_descr_keywords_checkbox)
 
         layout_l = QVBoxLayout()
         layout_l.addWidget(self.settings_groupbox)
@@ -320,7 +330,9 @@ class MainWindow(QWidget):
             return
 
         current_indices = self.job_table.get_current_dataframe_indices()
-        df_res = filter_job_descriptions(self.df, keywords, current_indices)
+        df_res = filter_job_descriptions(
+            self.df, keywords, current_indices, True
+        )
         self.job_table.display_jobs(df_res)
 
     def _callback_save_results(self) -> None:
@@ -334,6 +346,7 @@ class MainWindow(QWidget):
             self.df.loc[current_indices, :],
             self.metadata,
             folder=self.save_folder,
+            use_marked_descriptions=self.mark_descr_keywords_checkbox.isChecked(),
         )
         self._results_saved = True
         QMessageBox.information(self, "Saving", "Saving is completed")
