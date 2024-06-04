@@ -679,7 +679,7 @@ def contains_keywords(string: str, keywords: Iterable[str]) -> bool:
     Returns
     -------
     bool
-        True if any of the keywords are in `title`, False if not.
+        True if any of the keywords are in `string`, False if not.
 
     """
     string = string.lower()
