@@ -591,6 +591,7 @@ def filter_job_descriptions(
     df: DataFrame,
     keywords: Iterable[str],
     index_filter: Optional[pandas.Index] = None,
+    mark_keywords: bool = True,
 ) -> DataFrame:
     """Filter job descriptions based on a keyword.
 
@@ -609,6 +610,8 @@ def filter_job_descriptions(
     index_filter : Optional[pandas.Index]
         Series of indices for which to filter on the descriptions. If None, the
         descriptions for all jobs will be checked.
+    mark_keywords : bool
+        If True, will mark all the found keywords using HTML.
 
     Returns
     -------
@@ -627,11 +630,17 @@ def filter_job_descriptions(
     df_temp = df.loc[index_filter, :] if index_filter is not None else df
 
     df[C.KEY_DESCR_CONTAINS_KEYWORD] = None
+    df[C.KEY_JOB_DESCRIPTION_MARKED] = None
     for row_id, row in df_temp.iterrows():
         if (descr := row[C.KEY_JOB_DESCRIPTION]) is None:
             continue
         elif descr is not C.UNKNOWN:
-            contains_keyword = contains_keywords(descr.lower(), keywords)
+            if mark_keywords:
+                contains_keyword, descr = mark_keywords_html(descr, keywords)
+                df.loc[row_id, C.KEY_JOB_DESCRIPTION_MARKED] = descr
+            else:
+                contains_keyword = contains_keywords(descr.lower(), keywords)
+
         else:
             contains_keyword = C.UNKNOWN
 
