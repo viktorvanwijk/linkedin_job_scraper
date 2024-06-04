@@ -1,6 +1,7 @@
 # Dataframe keys
 KEY_DESCR_CONTAINS_KEYWORD = "descr_contains_keyword"
 KEY_JOB_DESCRIPTION = "description_html"
+KEY_JOB_DESCRIPTION_MARKED = "description_html_marked"
 KEY_KEEP_JOB_AFTER_TITLE_FILTER = "keep_job_after_title_filter"
 KEY_TITLE = "title"
 KEY_COMPANY = "company"
@@ -58,3 +59,18 @@ HTML_JOB_TITLE = """
 </h1>\n
 """
 HTML_JOB_SEPARATOR = f"\n{'-':-<500}\n"
+HTML_KEYWORD_MARK = "<mark>{keyword}</mark>"
+HTML_START = "<html>"
+HTML_END = "</html>"
+HTML_BODY_START = "<body>"
+HTML_BODY_END = "</body>"
+HTML_MARK_SETTINGS = """
+<head>
+<style>
+mark { 
+  background-color: magenta;
+  color: white;
+}
+</style>
+</head>
+"""

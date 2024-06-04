@@ -768,7 +768,9 @@ def save_job_dataframe_to_html_file(
         os.mkdir(folder)
 
     with open(f"{folder}/{filename}", "w", encoding="utf-8") as f:
-        f.write("<html><body>")
+        f.write(C.HTML_START)
+        f.write(C.HTML_MARK_SETTINGS)
+        f.write(C.HTML_BODY_START)
         for row_id, row in df.iterrows():
             f.write(
                 C.HTML_JOB_TITLE.format(
@@ -785,4 +787,5 @@ def save_job_dataframe_to_html_file(
                 descr = str(row.get(C.KEY_JOB_DESCRIPTION, C.UNKNOWN))
             f.write(descr)
             f.write(C.HTML_JOB_SEPARATOR)
-        f.write("</body></html>")
+        f.write(C.HTML_BODY_END)
+        f.write(C.HTML_END)
