@@ -728,6 +728,7 @@ def save_job_dataframe_to_html_file(
     metadata: Dict[str, Any],
     filename: Optional[str] = None,
     folder: str = "results",
+    use_marked_descriptions: bool = True,
 ) -> None:
     """Save job dataframe to an HTML file.
 
@@ -744,6 +745,10 @@ def save_job_dataframe_to_html_file(
     folder : str
         Folder to save the results in. Will be created if it doesn't exist.
         Default is a `results` folder in the current working directory.
+    use_marked_descriptions : bool
+        Indicates whether to use the job descriptions with marked (True) or
+        unmarked (False) keywords. If the marked job descriptions are not
+        present in the dataframe, the unmarked job descriptions will be used.
 
     Raises
     ------
@@ -773,6 +778,11 @@ def save_job_dataframe_to_html_file(
                     location=row.get(C.KEY_LOCATION, C.UNKNOWN),
                 )
             )
-            f.write(str(row.get(C.KEY_JOB_DESCRIPTION, C.UNKNOWN)))
+            if use_marked_descriptions:
+                descr = str(row.get(C.KEY_JOB_DESCRIPTION_MARKED, None))
+
+            if not use_marked_descriptions or descr is None:
+                descr = str(row.get(C.KEY_JOB_DESCRIPTION, C.UNKNOWN))
+            f.write(descr)
             f.write(C.HTML_JOB_SEPARATOR)
         f.write("</body></html>")
