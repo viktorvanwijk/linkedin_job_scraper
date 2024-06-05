@@ -136,8 +136,7 @@ class MainWindow(QWidget):
         self.mark_descr_keywords_checkbox.setChecked(True)
         self.mark_descr_keywords_checkbox.setToolTip(
             "Dictates whether description keywords will be marked in the "
-            "results. Note: will be applied after pressing the "
-            "'Filter job descriptions' button."
+            "results."
         )
         self.buttons = {}
         # fmt: off
