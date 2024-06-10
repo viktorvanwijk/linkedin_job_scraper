@@ -7,12 +7,6 @@ The LinkedIn search engine is broken. It keeps showing (promoted) vacancies that
 # How?
 By using HTML scraping on LinkedIn's guest job search.
 
-# When?
-Whenever.
-
-# Who?
-Just me.
-
 # Required packages
 - requests
 - BeautifulSoup
