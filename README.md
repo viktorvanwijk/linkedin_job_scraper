@@ -10,6 +10,7 @@ By using HTML scraping on LinkedIn's guest job search.
 # Required packages
 - requests
 - BeautifulSoup
+- lxml
 - pandas
 - PyQt5 (optional)
 
