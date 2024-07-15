@@ -32,7 +32,7 @@ TITLE_KEYWORDS_TO_DISCARD = (
     "java", "php", "c++", "c#", "dotnet", ".net", "plc", "mendix", "oracle",
     "data", "front end", "front-end", "frontend", "golang", "scala", "ruby",
     "powerbi", "rust", "react", "internship", "principal", "typescript",
-    "werktuig", "gis", "angular", "stage", "year usd"
+    "werktuig", "gis", "angular", "stage", "year usd", "zzp"
 )
 DESCRIPTION_KEYWORDS = ("python",)
 # fmt: on
@@ -247,13 +247,9 @@ class LinkedinJobScraper:
             f"{work_location}."
         )
 
-        metadata = {
-            C.URL_PARAM_N_SECONDS: convert_days_to_sec(n_days),
-            C.URL_PARAM_WORK_LOCATION: self._join_wl(work_location),
-            C.URL_PARAM_KEYWORDS: keywords,
-            C.URL_PARAM_LOCATION: location,
-            C.URL_PARAM_GEO_ID: geo_id,
-        }
+        metadata = self._format_url_metadata(
+            keywords, n_days, location, geo_id, work_location
+        )
         page = page_start
         job_list = []
         while True:
@@ -304,6 +300,45 @@ class LinkedinJobScraper:
             html = None
 
         return html
+
+    def _format_url_metadata(
+        self,
+        keywords: str,
+        n_days: int,
+        location: str,
+        geo_id: str,
+        work_location: Tuple[WL],
+    ) -> Dict[str, str]:
+        """Formats the search parameters as a dictionary which can be used to
+        format a URL.
+
+        Parameters
+        ----------
+        keywords : str
+            Keywords to search for.
+        n_days : int
+            The past number of days to search in.
+        location : str
+            Area to search in.
+        geo_id : str
+            Geo identification.
+        work_location : Tuple[WL]
+            Tuple of work locations (on site, remote, hybrid).
+
+        Returns
+        -------
+        Dict[str, str]
+            Dictionary of search parameters.
+        """
+        return {
+            C.URL_PARAM_N_SECONDS: convert_days_to_sec(n_days),
+            # TODO: when all three are selected, need to pass an empty string
+            #  to fetch everything
+            C.URL_PARAM_WORK_LOCATION: self._join_wl(work_location),
+            C.URL_PARAM_KEYWORDS: keywords,
+            C.URL_PARAM_LOCATION: location,
+            C.URL_PARAM_GEO_ID: geo_id,
+        }
 
     def _extract_info_from_single_job_on_job_page(
         self, html_job: BeautifulSoup
@@ -388,13 +423,10 @@ class LinkedinJobScraper:
             f"day(s) with location '{location}' and geo ID '{geo_id}', and "
             f"work location: {work_location}."
         )
-        url = C.URL_FOR_N_JOBS.format(
-            keywords=keywords,
-            n_seconds=convert_days_to_sec(n_days),
-            location=location,
-            geo_id=geo_id,
-            work_location=self._join_wl(work_location),
+        metadata = self._format_url_metadata(
+            keywords, n_days, location, geo_id, work_location
         )
+        url = C.URL_FOR_N_JOBS.format(**metadata)
         html = self.session.get_html(url)
 
         html_n_jobs = html.find("span", "results-context-header__job-count")
