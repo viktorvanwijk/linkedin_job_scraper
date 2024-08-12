@@ -781,11 +781,11 @@ def save_job_dataframe_to_html_file(
                 )
             )
             if use_marked_descriptions:
-                descr = str(row.get(C.KEY_JOB_DESCRIPTION_MARKED, None))
+                descr = row.get(C.KEY_JOB_DESCRIPTION_MARKED, None)
 
             if not use_marked_descriptions or descr is None:
-                descr = str(row.get(C.KEY_JOB_DESCRIPTION, C.UNKNOWN))
-            f.write(descr)
+                descr = row.get(C.KEY_JOB_DESCRIPTION, C.UNKNOWN)
+            f.write(str(descr))
             f.write(C.HTML_JOB_SEPARATOR)
         f.write(C.HTML_BODY_END)
         f.write(C.HTML_END)
