@@ -8,6 +8,7 @@ import os
 import re
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from random import uniform
 from time import sleep
 from typing import Any, Dict, Iterable, Optional, Tuple
@@ -32,7 +33,7 @@ TITLE_KEYWORDS_TO_DISCARD = (
     "java", "php", "c++", "c#", "dotnet", ".net", "plc", "mendix", "oracle",
     "data", "front end", "front-end", "frontend", "golang", "scala", "ruby",
     "powerbi", "rust", "react", "internship", "principal", "typescript",
-    "werktuig", "gis", "angular", "stage", "year usd"
+    "werktuig", "gis", "angular", "stage", "year usd", "zzp"
 )
 DESCRIPTION_KEYWORDS = ("python",)
 # fmt: on
@@ -247,13 +248,9 @@ class LinkedinJobScraper:
             f"{work_location}."
         )
 
-        metadata = {
-            C.URL_PARAM_N_SECONDS: convert_days_to_sec(n_days),
-            C.URL_PARAM_WORK_LOCATION: self._join_wl(work_location),
-            C.URL_PARAM_KEYWORDS: keywords,
-            C.URL_PARAM_LOCATION: location,
-            C.URL_PARAM_GEO_ID: geo_id,
-        }
+        metadata = self._format_url_metadata(
+            keywords, n_days, location, geo_id, work_location
+        )
         page = page_start
         job_list = []
         while True:
@@ -304,6 +301,45 @@ class LinkedinJobScraper:
             html = None
 
         return html
+
+    def _format_url_metadata(
+        self,
+        keywords: str,
+        n_days: int,
+        location: str,
+        geo_id: str,
+        work_location: Tuple[WL],
+    ) -> Dict[str, str]:
+        """Formats the search parameters as a dictionary which can be used to
+        format a URL.
+
+        Parameters
+        ----------
+        keywords : str
+            Keywords to search for.
+        n_days : int
+            The past number of days to search in.
+        location : str
+            Area to search in.
+        geo_id : str
+            Geo identification.
+        work_location : Tuple[WL]
+            Tuple of work locations (on site, remote, hybrid).
+
+        Returns
+        -------
+        Dict[str, str]
+            Dictionary of search parameters.
+        """
+        return {
+            C.URL_PARAM_N_SECONDS: convert_days_to_sec(n_days),
+            # TODO: when all three are selected, need to pass an empty string
+            #  to fetch everything
+            C.URL_PARAM_WORK_LOCATION: self._join_wl(work_location),
+            C.URL_PARAM_KEYWORDS: keywords,
+            C.URL_PARAM_LOCATION: location,
+            C.URL_PARAM_GEO_ID: geo_id,
+        }
 
     def _extract_info_from_single_job_on_job_page(
         self, html_job: BeautifulSoup
@@ -388,13 +424,10 @@ class LinkedinJobScraper:
             f"day(s) with location '{location}' and geo ID '{geo_id}', and "
             f"work location: {work_location}."
         )
-        url = C.URL_FOR_N_JOBS.format(
-            keywords=keywords,
-            n_seconds=convert_days_to_sec(n_days),
-            location=location,
-            geo_id=geo_id,
-            work_location=self._join_wl(work_location),
+        metadata = self._format_url_metadata(
+            keywords, n_days, location, geo_id, work_location
         )
+        url = C.URL_FOR_N_JOBS.format(**metadata)
         html = self.session.get_html(url)
 
         html_n_jobs = html.find("span", "results-context-header__job-count")
@@ -591,6 +624,7 @@ def filter_job_descriptions(
     df: DataFrame,
     keywords: Iterable[str],
     index_filter: Optional[pandas.Index] = None,
+    mark_keywords: bool = True,
 ) -> DataFrame:
     """Filter job descriptions based on a keyword.
 
@@ -609,6 +643,8 @@ def filter_job_descriptions(
     index_filter : Optional[pandas.Index]
         Series of indices for which to filter on the descriptions. If None, the
         descriptions for all jobs will be checked.
+    mark_keywords : bool
+        If True, will mark all the found keywords using HTML.
 
     Returns
     -------
@@ -627,11 +663,17 @@ def filter_job_descriptions(
     df_temp = df.loc[index_filter, :] if index_filter is not None else df
 
     df[C.KEY_DESCR_CONTAINS_KEYWORD] = None
+    df[C.KEY_JOB_DESCRIPTION_MARKED] = None
     for row_id, row in df_temp.iterrows():
         if (descr := row[C.KEY_JOB_DESCRIPTION]) is None:
             continue
         elif descr is not C.UNKNOWN:
-            contains_keyword = contains_keywords(descr.lower(), keywords)
+            if mark_keywords:
+                contains_keyword, descr = mark_keywords_html(descr, keywords)
+                df.loc[row_id, C.KEY_JOB_DESCRIPTION_MARKED] = descr
+            else:
+                contains_keyword = contains_keywords(descr.lower(), keywords)
+
         else:
             contains_keyword = C.UNKNOWN
 
@@ -670,7 +712,7 @@ def contains_keywords(string: str, keywords: Iterable[str]) -> bool:
     Returns
     -------
     bool
-        True if any of the keywords are in `title`, False if not.
+        True if any of the keywords are in `string`, False if not.
 
     """
     string = string.lower()
@@ -680,11 +722,46 @@ def contains_keywords(string: str, keywords: Iterable[str]) -> bool:
     return False
 
 
+def mark_keywords_html(
+    string: str, keywords: Iterable[str]
+) -> Tuple[bool, str]:
+    """Checks if a string contains any of the passed keywords
+    (case-insensitive) and return a new string where all the found keywords are
+    marked in HTML.
+
+    Parameters
+    ----------
+    string : str
+    keywords : Iterable[str]
+        Iterable of keywords to search for.
+
+    Returns
+    -------
+    contains_keywords : bool
+        True if any of the keywords are in `string`, False if not.
+    string_marked : str
+        Same as `string` but with all the found keywords marked using HTML.
+    """
+    string_marked = string
+    contains_keyword = False
+    for keyword in keywords:
+        string_marked, count = re.subn(
+            pattern=keyword,
+            repl=C.HTML_KEYWORD_MARK.format(keyword=keyword.capitalize()),
+            string=string_marked,
+            flags=re.RegexFlag.IGNORECASE,
+        )
+        contains_keyword = contains_keyword | count > 0
+
+    return contains_keyword, string_marked
+
+
 def save_job_dataframe_to_html_file(
     df: DataFrame,
     metadata: Dict[str, Any],
     filename: Optional[str] = None,
     folder: str = "results",
+    use_marked_descriptions: bool = True,
 ) -> None:
     """Save job dataframe to an HTML file.
 
@@ -701,6 +778,10 @@ def save_job_dataframe_to_html_file(
     folder : str
         Folder to save the results in. Will be created if it doesn't exist.
         Default is a `results` folder in the current working directory.
+    use_marked_descriptions : bool
+        Indicates whether to use the job descriptions with marked (True) or
+        unmarked (False) keywords. If the marked job descriptions are not
+        present in the dataframe, the unmarked job descriptions will be used.
 
     Raises
     ------
@@ -716,11 +797,12 @@ def save_job_dataframe_to_html_file(
     else:
         assert filename.endswith(".html")
 
-    if not os.path.isdir(folder):
-        os.mkdir(folder)
+    Path(folder).mkdir(parents=True, exist_ok=True)
 
     with open(f"{folder}/{filename}", "w", encoding="utf-8") as f:
-        f.write("<html><body>")
+        f.write(C.HTML_START)
+        f.write(C.HTML_MARK_SETTINGS)
+        f.write(C.HTML_BODY_START)
         for row_id, row in df.iterrows():
             f.write(
                 C.HTML_JOB_TITLE.format(
@@ -730,6 +812,12 @@ def save_job_dataframe_to_html_file(
                     location=row.get(C.KEY_LOCATION, C.UNKNOWN),
                 )
             )
-            f.write(str(row.get(C.KEY_JOB_DESCRIPTION, C.UNKNOWN)))
+            if use_marked_descriptions:
+                descr = row.get(C.KEY_JOB_DESCRIPTION_MARKED, None)
+
+            if not use_marked_descriptions or descr is None:
+                descr = row.get(C.KEY_JOB_DESCRIPTION, C.UNKNOWN)
+            f.write(str(descr))
             f.write(C.HTML_JOB_SEPARATOR)
-        f.write("</body></html>")
+        f.write(C.HTML_BODY_END)
+        f.write(C.HTML_END)
