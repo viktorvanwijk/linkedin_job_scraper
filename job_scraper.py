@@ -8,6 +8,7 @@ import os
 import re
 from datetime import datetime
 from enum import Enum
+from pathlib import Path
 from random import uniform
 from time import sleep
 from typing import Any, Dict, Iterable, Optional, Tuple
@@ -32,7 +33,7 @@ TITLE_KEYWORDS_TO_DISCARD = (
     "java", "php", "c++", "c#", "dotnet", ".net", "plc", "mendix", "oracle",
     "data", "front end", "front-end", "frontend", "golang", "scala", "ruby",
     "powerbi", "rust", "react", "internship", "principal", "typescript",
-    "werktuig", "gis", "angular", "stage", "year usd"
+    "werktuig", "gis", "angular", "stage", "year usd", "zzp"
 )
 DESCRIPTION_KEYWORDS = ("python",)
 # fmt: on
@@ -764,8 +765,7 @@ def save_job_dataframe_to_html_file(
     else:
         assert filename.endswith(".html")
 
-    if not os.path.isdir(folder):
-        os.mkdir(folder)
+    Path(folder).mkdir(parents=True, exist_ok=True)
 
     with open(f"{folder}/{filename}", "w", encoding="utf-8") as f:
         f.write(C.HTML_START)
