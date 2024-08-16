@@ -397,20 +397,20 @@ class MainWindow(QWidget):
         for name, state in button_states.items():
             self.buttons[name].setEnabled(state)
 
-    def _lock_buttons(self, buttons: Optional[Enum] = None) -> None:
+    def _lock_buttons(self, buttons: Optional[BUTTON_GROUPS] = None) -> None:
         """Lock buttons.
 
-        buttons : Optional[Enum]
-            Button group enum. If None,  all buttons will be locked.
+        buttons : Optional[BUTTON_GROUPS]
+            Button group enum. If None, all buttons will be locked.
         """
         buttons = buttons.value if buttons is not None else self.buttons.keys()
         button_states = dict(zip(buttons, [False] * len(buttons)))
         self._change_button_states(button_states)
 
-    def _unlock_buttons(self, buttons: Optional[Enum] = None) -> None:
+    def _unlock_buttons(self, buttons: Optional[BUTTON_GROUPS] = None) -> None:
         """Unlock buttons.
 
-        buttons : Optional[Enum[str]]
+        buttons : Optional[BUTTON_GROUPS]
             Button group enum. If None, all buttons will be unlocked.
         """
         buttons = buttons.value if buttons is not None else self.buttons.keys()
