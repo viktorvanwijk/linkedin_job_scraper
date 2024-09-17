@@ -58,7 +58,7 @@ HTML_JOB_TITLE = """
     <a class="hidden-nested-link" href="{link}">{title} at {company}, {location}</a>
 </h1>\n
 """
-HTML_JOB_SEPARATOR = f"\n{'-':-<500}\n"
+HTML_JOB_SEPARATOR = "<hr>"
 HTML_KEYWORD_MARK = "<mark>{keyword}</mark>"
 HTML_START = "<html>"
 HTML_END = "</html>"
