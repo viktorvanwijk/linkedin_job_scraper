@@ -341,6 +341,7 @@ class MainWindow(QWidget):
         view.
         """
         current_indices = self.job_table.get_current_dataframe_indices()
+        self._l.info(f"Saving results to: {self.save_folder}")
         save_job_dataframe_to_html_file(
             self.df.loc[current_indices, :],
             self.metadata,
@@ -935,7 +936,8 @@ def main() -> None:
     """Main app initialization and main loop."""
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
-    widget = MainWindow(session, scraper, "../results")
+    cwd = os.path.dirname(__file__)
+    widget = MainWindow(session, scraper, f"{cwd}/../results")
     widget.show()
     app.exec_()
 
