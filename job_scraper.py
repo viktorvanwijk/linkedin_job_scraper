@@ -667,7 +667,7 @@ def filter_job_descriptions(
     for row_id, row in df_temp.iterrows():
         if (descr := row[C.KEY_JOB_DESCRIPTION]) is None:
             continue
-        elif descr is not C.UNKNOWN:
+        elif descr != C.UNKNOWN:
             if mark_keywords:
                 contains_keyword, descr = mark_keywords_html(descr, keywords)
                 df.loc[row_id, C.KEY_JOB_DESCRIPTION_MARKED] = descr
@@ -751,7 +751,7 @@ def mark_keywords_html(
             string=string_marked,
             flags=re.RegexFlag.IGNORECASE,
         )
-        contains_keyword = contains_keyword | count > 0
+        contains_keyword = contains_keyword | (count > 0)
 
     return contains_keyword, string_marked
 
