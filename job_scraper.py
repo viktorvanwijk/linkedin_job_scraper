@@ -235,7 +235,9 @@ class LinkedinJobScraper:
         )
 
         if n_jobs is None:
-            n_jobs = self.determine_n_jobs(**metadata)
+            n_jobs = self.determine_n_jobs(
+                keywords, n_days, location, geo_id, work_location
+            )
             if n_jobs is None:
                 self._l.warning(
                     "Failed determining the number of jobs. Will try to fetch "
