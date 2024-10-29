@@ -180,6 +180,7 @@ class LinkedinJobScraper:
     WORK_LOCATION = (WL.HYBRID, WL.REMOTE, WL.ON_SITE)
 
     N_JOBS_PER_PAGE = 10
+    MAX_N_JOBS = 1000
 
     def __init__(self, session):
         self.session: LinkedinSession = session
@@ -193,7 +194,9 @@ class LinkedinJobScraper:
         location: str = LOCATION,
         geo_id: str = GEO_ID,
         work_location: Tuple[WL] = WORK_LOCATION,
+        # TODO: is this parameter useful?
         page_start: int = 0,
+        n_jobs: int = None,
     ) -> Tuple[DataFrame, Dict[str, Any]]:
         """Get all jobs for the passed parameters.
 
@@ -211,6 +214,8 @@ class LinkedinJobScraper:
             Tuple of work locations (on site, remote, hybrid).
         page_start : str
             Page number to start searching from.
+        n_jobs : int
+            Number of jobs to scrape. Set to `None` to scrape all jobs.
 
         Returns
         -------
@@ -228,9 +233,18 @@ class LinkedinJobScraper:
         metadata = self._format_url_metadata(
             keywords, n_days, location, geo_id, work_location
         )
-        page = page_start
+
+        if n_jobs is None:
+            n_jobs = self.determine_n_jobs(**metadata)
+            if n_jobs is None:
+                self._l.warning(
+                    "Failed determining the number of jobs. Will try to fetch "
+                    f"the maximum possible number of jobs ({self.MAX_N_JOBS})."
+                )
+                n_jobs = self.MAX_N_JOBS
+
         job_list = []
-        while True:
+        for page in range(page_start, ceil_div(n_jobs, self.N_JOBS_PER_PAGE)):
             self._l.info(f"Fetching jobs from page {page}")
             url = C.URL_JOB_PAGE.format(
                 start=page * self.N_JOBS_PER_PAGE, **metadata
@@ -241,13 +255,11 @@ class LinkedinJobScraper:
 
             jobs = html.find_all("li")
             if len(jobs) == 0:
-                break
+                continue
 
             for job in jobs:
                 job_dict = self._extract_info_from_single_job_on_job_page(job)
                 job_list.append(job_dict)
-
-            page += 1
 
         df = DataFrame(job_list)
         # TODO: should this be here?
@@ -674,6 +686,23 @@ def convert_days_to_sec(n_days: int) -> int:
 
     """
     return n_days * 3600 * 24
+
+
+def ceil_div(n: int, d: int) -> int:
+    """Upside-down floor division.
+
+    See https://stackoverflow.com/questions/14822184/is-there-a-ceiling-equivalent-of-operator-in-python/17511341#17511341
+
+    Parameters
+    ----------
+    n : int
+    d : int
+
+    Returns
+    -------
+    int
+    """
+    return -(n // -d)
 
 
 def contains_keywords(string: str, keywords: Iterable[str]) -> bool:
