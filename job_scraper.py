@@ -179,35 +179,12 @@ class LinkedinJobScraper:
     GEO_ID = "102890719"
     WORK_LOCATION = (WL.HYBRID, WL.REMOTE, WL.ON_SITE)
 
+    N_JOBS_PER_PAGE = 10
+
     def __init__(self, session):
         self.session: LinkedinSession = session
 
         self._l = logger.getChild(self.__class__.__name__)
-
-        self._n_jobs_per_page = None
-
-    @property
-    def n_jobs_per_page(self) -> int:
-        """Number of jobs per job page.
-
-        Will determine this on the first call, because it is session
-        dependent.
-
-        Returns
-        -------
-        int
-        """
-        if self._n_jobs_per_page is None:
-            self._l.debug("Determining the number of jobs per page")
-            html = self._get_job_page(C.URL_TEST_CONNECTION)
-            # TODO-2: is there a better way of determining this?
-            if str(html).startswith("<!DOCTYPE html>"):
-                self._n_jobs_per_page = 10
-            else:
-                self._n_jobs_per_page = 25
-            self._l.debug(f"Number of jobs per page: {self._n_jobs_per_page}")
-
-        return self._n_jobs_per_page
 
     def scrape_jobs(
         self,
@@ -256,7 +233,7 @@ class LinkedinJobScraper:
         while True:
             self._l.info(f"Fetching jobs from page {page}")
             url = C.URL_JOB_PAGE.format(
-                start=page * self.n_jobs_per_page, **metadata
+                start=page * self.N_JOBS_PER_PAGE, **metadata
             )
             html = self._get_job_page(url)
             if html is None:
