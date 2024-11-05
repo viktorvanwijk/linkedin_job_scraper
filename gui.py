@@ -56,7 +56,6 @@ class MainWindow(QWidget):
 
     def __init__(
         self,
-        session: LinkedinSession,
         scraper: LinkedinJobScraper,
         save_folder: str,
         *args,
@@ -73,8 +72,8 @@ class MainWindow(QWidget):
         """
         super().__init__(*args, **kwargs)
 
-        self.session: LinkedinSession = session
         self.scraper: LinkedinJobScraper = scraper
+        self.session = scraper.session
         self.worker: Worker = None
         self.save_folder = save_folder
 
@@ -937,7 +936,7 @@ def main() -> None:
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
     cwd = os.path.dirname(__file__)
-    widget = MainWindow(session, scraper, f"{cwd}/../results")
+    widget = MainWindow(scraper, f"{cwd}/../results")
     widget.show()
     app.exec_()
 
