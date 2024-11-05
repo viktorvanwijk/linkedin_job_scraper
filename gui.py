@@ -45,6 +45,9 @@ class MainWindow(QWidget):
     MIN_WIDTH = 1280
     MIN_HEIGHT = 960
 
+    # TODO: where to put this?
+    progress_update_signal = pyqtSignal(int)
+
     class BUTTON_GROUPS(Enum):
         AFTER_INIT = ("test_session", "get_n_jobs", "scrape_jobs")
         AFTER_SCRAPE = AFTER_INIT + (
@@ -75,6 +78,7 @@ class MainWindow(QWidget):
         super().__init__(*args, **kwargs)
 
         self.scraper: LinkedinJobScraper = scraper
+        self.scraper.progress_signal = self.progress_update_signal
         self.session = scraper.session
         self.worker: Worker = None
         self.save_folder = save_folder
