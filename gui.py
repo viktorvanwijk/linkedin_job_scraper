@@ -41,7 +41,7 @@ PATH_ICONS = f"{os.path.dirname(__file__)}\\icons"
 
 class MainWindow(QWidget):
     MIN_WIDTH = 1280
-    MIN_HEIGHT = 720
+    MIN_HEIGHT = 960
 
     class BUTTON_GROUPS(Enum):
         AFTER_INIT = ("test_session", "get_n_jobs", "scrape_jobs")
@@ -100,6 +100,15 @@ class MainWindow(QWidget):
         self.settings_groupbox = QGroupBox("Settings")
         self.settings_groupbox.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
 
+        self.title_filter_groupbox = QGroupBox("Title filter")
+        self.title_filter_groupbox.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
+
+        self.description_filter_groupbox = QGroupBox("Description filter")
+        self.description_filter_groupbox.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
+
+        self.actions_groupbox = QGroupBox("Actions")
+        self.actions_groupbox.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
+
         self.form_settings_layout = FormSettingsLayout(
             setting_params=(
                 C.URL_PARAM_KEYWORDS,
@@ -117,17 +126,17 @@ class MainWindow(QWidget):
         self.work_location_layout = WorkLocationLayout()
         self.title_filter_layouts = {
             "always_keep": FilterKeywordsLayout(
-                "Title keywords to always keep", TITLE_KEYWORDS_TO_ALWAYS_KEEP
+                "Keywords to always keep", TITLE_KEYWORDS_TO_ALWAYS_KEEP
             ),
             "keep": FilterKeywordsLayout(
-                "Title keywords to keep", TITLE_KEYWORDS_TO_KEEP
+                "Keywords to keep", TITLE_KEYWORDS_TO_KEEP
             ),
             "discard": FilterKeywordsLayout(
-                "Title keyword to discard", TITLE_KEYWORDS_TO_DISCARD
+                "Keywords to discard", TITLE_KEYWORDS_TO_DISCARD
             ),
         }
         self.description_filter_input = FilterKeywordsLayout(
-            "Description keywords", DESCRIPTION_KEYWORDS
+            "Keywords", DESCRIPTION_KEYWORDS
         )
         self.mark_descr_keywords_checkbox = QCheckBox(
             "Mark description keywords"
@@ -143,9 +152,9 @@ class MainWindow(QWidget):
             ("test_session", "Test session", self._callback_test_session, True),
             ("get_n_jobs", "Get number of jobs", self._callback_get_n_jobs, True),
             ("scrape_jobs", "Fetch jobs", self._callback_scrape_jobs, True),
-            ("filter_job_titles", "Filter job titles", self._callback_filter_job_titles, False),
+            ("filter_job_titles", "Filter", self._callback_filter_job_titles, False),
             ("get_job_descriptions", "Fetch job descriptions", self._callback_get_job_descriptions, False),
-            ("filter_job_descriptions", "Filter job descriptions", self._callback_filter_job_descriptions, False),
+            ("filter_job_descriptions", "Filter", self._callback_filter_job_descriptions, False),
             ("save_results", "Save results", self._callback_save_results, False),
             ("reset_table_view", "Reset filters", self._callback_reset_table_view, False),
             ("stop_worker", "Stop", self._callback_stop_worker, False),
@@ -164,19 +173,31 @@ class MainWindow(QWidget):
         layout_settings = QVBoxLayout(self.settings_groupbox)
         layout_settings.addLayout(self.form_settings_layout)
         layout_settings.addLayout(self.work_location_layout)
+
+        layout_title_filters = QVBoxLayout(self.title_filter_groupbox)
         for tfl in self.title_filter_layouts.values():
-            layout_settings.addLayout(tfl)
-        layout_settings.addLayout(self.description_filter_input)
-        layout_settings.addWidget(self.mark_descr_keywords_checkbox)
+            layout_title_filters.addLayout(tfl)
+        layout_title_filters.addWidget(self.buttons["filter_job_titles"])
+
+        layout_description_filter = QVBoxLayout(self.description_filter_groupbox)
+        layout_description_filter.addLayout(self.description_filter_input)
+        layout_description_filter.addWidget(self.mark_descr_keywords_checkbox)
+        layout_description_filter.addWidget(self.buttons["filter_job_descriptions"])
+
+        # TODO: where to put the reset_table_view button?
+        layout_actions = QVBoxLayout(self.actions_groupbox)
+        for button in ("test_session", "get_n_jobs", "scrape_jobs", "get_job_descriptions"):
+            layout_actions.addWidget(self.buttons[button])
 
         layout_l = QVBoxLayout()
         layout_l.addWidget(self.settings_groupbox)
+        layout_l.addWidget(self.title_filter_groupbox)
+        layout_l.addWidget(self.description_filter_groupbox)
         layout_l.addStretch()
-        for button in self.buttons.values():
-            layout_l.addWidget(button)
+        layout_l.addWidget(self.actions_groupbox)
 
-        jobs_groupbox_layout = QVBoxLayout(jobs_groupbox)
-        jobs_groupbox_layout.addWidget(self.job_table)
+        layout_jobs_groupbox = QVBoxLayout(jobs_groupbox)
+        layout_jobs_groupbox.addWidget(self.job_table)
 
         layout.addLayout(layout_l)
         layout.addWidget(jobs_groupbox, 1)
