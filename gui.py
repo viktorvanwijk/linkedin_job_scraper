@@ -81,6 +81,7 @@ class MainWindow(QWidget):
         self.scraper.progress_signal = self.progress_update_signal
         self.session = scraper.session
         self.worker: Worker = None
+        self.progress_bar: QProgressDialogWithConfirmation = None
         self.save_folder = save_folder
 
         self._l = logger.getChild(self.__class__.__name__)
@@ -264,12 +265,7 @@ class MainWindow(QWidget):
         )
         self.worker.result.connect(self._slot_scrape_jobs_result)
 
-        self.pd = QProgressDialogWithConfirmation(
-            "Fetching jobs...", "Cancel", 0, 100, parent=self
-        )
-        self.pd.canceled.connect(self._callback_stop_worker)
-        self.worker.finished.connect(self.pd.close)
-        self.pd.show()
+        self.create_progress_window("Fetching jobs...")
 
         self.worker.start()
         self._unlock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
@@ -334,8 +330,7 @@ class MainWindow(QWidget):
         )
         self.worker.result.connect(self._slot_get_job_descriptions_result)
 
-        # TODO: add progress dialog. Maybe create new method to combine it with
-        #  self._callback_scrape_jobs
+        self.create_progress_window("Fetching job descriptions...")
 
         self.worker.start()
         self._unlock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
@@ -548,6 +543,28 @@ class MainWindow(QWidget):
         button.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
         button.clicked.connect(callback)
         self.buttons[name] = button
+
+    def create_progress_window(self, label_text: str) -> None:
+        """Create progress dialog window and connect relevant signals.
+
+        Parameters
+        ----------
+        label_text : str
+            Text on the window indicating to which action the shown progress
+            belongs.
+        """
+        # TODO: maybe it's better to create one window in _init_ui and use this
+        #  method to connect/disconnect signals, reset the progress bar, and
+        #  show the window. It would be more in line with the design of
+        #  QProgressDialog, which gets hidden upon cancellation or completion
+        self.progress_bar = QProgressDialogWithConfirmation(
+            label_text, "Cancel", 0, 100, parent=self
+        )
+        self.progress_bar.canceled.connect(self._callback_stop_worker)
+        # This is needed to ensure the window is deleted when finished
+        self.worker.finished.connect(self.progress_bar.close)
+        self.scraper.progress_signal.connect(self.progress_bar.setValue)
+        self.progress_bar.show()
 
 
 class Worker(QThread):
@@ -946,10 +963,19 @@ class QProgressDialogWithConfirmation(QProgressDialog):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
+        self.setWindowTitle("Progress")
+
         # Override Cancel-button functionality
         button = self.findChild(QPushButton)
         button.clicked.disconnect()
         button.clicked.connect(self.cancel)
+
+        # Initialize with 0 progress
+        self.setValue(0)
+
+        # Ensure the widget is deleted (instead of minimized) when closed and
+        # finished
+        self.setAttribute(Qt.WA_DeleteOnClose)
 
     def cancel(self):
         """Override cancel to prompt the user with a confirmation about
@@ -964,6 +990,7 @@ class QProgressDialogWithConfirmation(QProgressDialog):
             return
 
         self.canceled.emit()
+        self.deleteLater()
         return super().cancel()
 
     def event(self, a0):
@@ -991,6 +1018,11 @@ class QProgressDialogWithConfirmation(QProgressDialog):
             a0.ignore()
             self.cancel()
             return
+
+        # Close confirmation message box if it is still open
+        messagebox = self.findChild(QMessageBox)
+        if messagebox is not None:
+            messagebox.close()
 
         return super().closeEvent(a0)
 
