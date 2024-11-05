@@ -18,7 +18,8 @@ from PyQt5.QtGui import QIcon, QKeyEvent
 from PyQt5.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QFormLayout, QGroupBox,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPlainTextEdit,
-    QPushButton, QSizePolicy, QSpinBox, QTableView, QVBoxLayout, QWidget)
+    QProgressDialog, QPushButton, QSizePolicy, QSpinBox, QTableView, QVBoxLayout,
+    QWidget)
 
 import constants as C
 from job_scraper import (
@@ -32,6 +33,7 @@ logger.setLevel(CONN)
 
 SIZE_FIXED = QSizePolicy.Fixed
 SIZE_MIN_EXPANDING = QSizePolicy.MinimumExpanding
+SIZE_MIN = QSizePolicy.Minimum
 
 LABEL_ROLE = QFormLayout.LabelRole
 FIELD_ROLE = QFormLayout.FieldRole
@@ -257,6 +259,14 @@ class MainWindow(QWidget):
             self.scraper.scrape_jobs, **settings_dict
         )
         self.worker.result.connect(self._slot_scrape_jobs_result)
+
+        self.pd = QProgressDialogWithConfirmation(
+            "Fetching jobs...", "Cancel", 0, 100, parent=self
+        )
+        self.pd.canceled.connect(self._callback_stop_worker)
+        self.worker.finished.connect(self.pd.close)
+        self.pd.show()
+
         self.worker.start()
         self._unlock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
 
@@ -275,6 +285,8 @@ class MainWindow(QWidget):
             self._last_button_states = self.BUTTON_GROUPS.AFTER_SCRAPE
             self._results_saved = False
         else:
+            # TODO: this will also be called if LinkedinSession raised a timeout
+            #  error, which shouldn't be the case
             QMessageBox.information(
                 self, "Fetch jobs", "No jobs available with current settings"
             )
@@ -317,6 +329,10 @@ class MainWindow(QWidget):
             self.scraper.get_job_descriptions, self.df, current_indices
         )
         self.worker.result.connect(self._slot_get_job_descriptions_result)
+
+        # TODO: add progress dialog. Maybe create new method to combine it with
+        #  self._callback_scrape_jobs
+
         self.worker.start()
         self._unlock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
 
@@ -387,16 +403,6 @@ class MainWindow(QWidget):
         Should only be used in emergencies.
         """
         if self.worker is None or not self.worker.isRunning():
-            return
-
-        mb = question_messagebox(
-            self,
-            "Stop action",
-            "Are you sure you want to stop the current action?",
-        )
-        self.worker.finished.connect(mb.close)
-        res = mb.exec_()
-        if res != QMessageBox.Yes:
             return
 
         # NOTE: normally, threads should be stopped using quit() instead of
@@ -922,6 +928,67 @@ class FilterKeywordsLayout(QVBoxLayout):
             return None
         filter_list = text.split(",")
         return [w.strip() for w in filter_list if w != ""]
+
+
+class QProgressDialogWithConfirmation(QProgressDialog):
+    """
+    References
+    ----------
+    [1] https://stackoverflow.com/questions/71226523/how-to-intercept-qprogressdialog-cancel-click
+    [2] https://forum.qt.io/topic/78604/how-to-disable-esc-key-close-the-qprogressdialog/11
+    [3] https://doc.qt.io/qt-5/qevent.html#accepted-prop
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Override Cancel-button functionality
+        button = self.findChild(QPushButton)
+        button.clicked.disconnect()
+        button.clicked.connect(self.cancel)
+
+    def cancel(self):
+        """Override cancel to prompt the user with a confirmation about
+        cancelling the action.
+        """
+        res = QMessageBox.question(
+            self,
+            "Stop action",
+            "Are you sure you want to stop the current action?"
+        )
+        if res != QMessageBox.Yes:
+            return
+
+        self.canceled.emit()
+        return super().cancel()
+
+    def event(self, a0):
+        """Override event to catch an escape-key press and remove its
+        functionality (closing the window). See [2].
+        """
+        if isinstance(a0, QKeyEvent) and a0.key() == Qt.Key_Escape:
+            # The event should be accepted here to prevent it from being
+            # propagated to the parent class [3].
+            a0.accept()
+            return True
+
+        return super().event(a0)
+
+    # def reject(self):
+    #     # TODO: according to [1], overriding reject should prevent the Esc
+    #     #  button from closing the window. Unfortunately, this is not the case.
+    #     pass
+
+    def closeEvent(self, a0):
+        """Override closeEvent to prompt a confirmation to the user when the 'X'
+        is clicked. See [1].
+        """
+        if a0.spontaneous():
+            a0.ignore()
+            self.cancel()
+            return
+
+        return super().closeEvent(a0)
 
 
 def question_messagebox(parent: QWidget, title: str, text: str) -> QMessageBox:
