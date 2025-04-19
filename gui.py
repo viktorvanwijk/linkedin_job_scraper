@@ -191,7 +191,6 @@ class MainWindow(QWidget):
         layout_description_filter.addWidget(self.mark_descr_keywords_checkbox)
         layout_description_filter.addWidget(self.buttons["filter_job_descriptions"])
 
-        # TODO: where to put the reset_table_view button?
         layout_actions = QVBoxLayout(self.actions_groupbox)
         for button in ("test_session", "get_n_jobs", "scrape_jobs", "get_job_descriptions"):
             layout_actions.addWidget(self.buttons[button])
@@ -202,6 +201,8 @@ class MainWindow(QWidget):
         layout_l.addWidget(self.description_filter_groupbox)
         layout_l.addStretch()
         layout_l.addWidget(self.actions_groupbox)
+        layout_l.addWidget(self.buttons["save_results"])
+        layout_l.addWidget(self.buttons["reset_table_view"])
 
         layout_jobs_groupbox = QVBoxLayout(jobs_groupbox)
         layout_jobs_groupbox.addWidget(self.job_table)
