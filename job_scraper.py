@@ -11,7 +11,9 @@ from enum import Enum
 from pathlib import Path
 from random import uniform
 from time import sleep
-from typing import Any, Dict, Iterable, Optional, Tuple
+from typing import (
+    Any, Dict, Iterable, Optional, Protocol, Tuple, runtime_checkable
+)
 
 import pandas
 from bs4 import BeautifulSoup
@@ -172,6 +174,12 @@ class LinkedinSession:
         self.session.close()
 
 
+@runtime_checkable
+class Signal(Protocol):
+    def emit(self, *args, **kwargs) -> None:
+        """Emit something."""
+
+
 class LinkedinJobScraper:
 
     LOCATION = "Nederland"
@@ -180,11 +188,37 @@ class LinkedinJobScraper:
     WORK_LOCATION = (WL.HYBRID, WL.REMOTE, WL.ON_SITE)
 
     N_JOBS_PER_PAGE = 10
+    MAX_N_JOBS = 1000
 
     def __init__(self, session):
         self.session: LinkedinSession = session
 
+        self._progress_signal: Signal = None
+
         self._l = logger.getChild(self.__class__.__name__)
+
+    @property
+    def progress_signal(self) -> Signal:
+        """Signal which can be used to emit the progress. Should be an integer
+        between 0 and 100.
+        """
+        return self._progress_signal
+
+    @progress_signal.setter
+    def progress_signal(self, v):
+        assert isinstance(v, Signal)
+        self._progress_signal = v
+
+    def update_progress(self, *args, **kwargs) -> None:
+        """Give an update on the progress by emitting a signal (if configured).
+        """
+        if self.progress_signal is None:
+            self._l.debug(
+                "Progress signal is not configured. Will not be emitting an "
+                "update."
+            )
+
+        self.progress_signal.emit(*args, **kwargs)
 
     def scrape_jobs(
         self,
@@ -193,7 +227,9 @@ class LinkedinJobScraper:
         location: str = LOCATION,
         geo_id: str = GEO_ID,
         work_location: Tuple[WL] = WORK_LOCATION,
+        # TODO: is this parameter useful?
         page_start: int = 0,
+        n_jobs: int = None,
     ) -> Tuple[DataFrame, Dict[str, Any]]:
         """Get all jobs for the passed parameters.
 
@@ -211,6 +247,8 @@ class LinkedinJobScraper:
             Tuple of work locations (on site, remote, hybrid).
         page_start : str
             Page number to start searching from.
+        n_jobs : int
+            Number of jobs to scrape. Set to `None` to scrape all jobs.
 
         Returns
         -------
@@ -228,9 +266,21 @@ class LinkedinJobScraper:
         metadata = self._format_url_metadata(
             keywords, n_days, location, geo_id, work_location
         )
-        page = page_start
+
+        if n_jobs is None:
+            n_jobs = self.determine_n_jobs(
+                keywords, n_days, location, geo_id, work_location
+            )
+            if n_jobs is None:
+                self._l.warning(
+                    "Failed determining the number of jobs. Will try to fetch "
+                    f"the maximum possible number of jobs ({self.MAX_N_JOBS})."
+                )
+                n_jobs = self.MAX_N_JOBS
+
         job_list = []
-        while True:
+        page_end = ceil_div(n_jobs, self.N_JOBS_PER_PAGE)
+        for page in range(page_start, page_end):
             self._l.info(f"Fetching jobs from page {page}")
             url = C.URL_JOB_PAGE.format(
                 start=page * self.N_JOBS_PER_PAGE, **metadata
@@ -241,13 +291,14 @@ class LinkedinJobScraper:
 
             jobs = html.find_all("li")
             if len(jobs) == 0:
-                break
+                continue
 
             for job in jobs:
                 job_dict = self._extract_info_from_single_job_on_job_page(job)
                 job_list.append(job_dict)
 
-            page += 1
+            # Note: +1 because the first page is 0
+            self.update_progress(int((page + 1) * 100 / page_end))
 
         df = DataFrame(job_list)
         # TODO: should this be here?
@@ -470,11 +521,14 @@ class LinkedinJobScraper:
         df_temp = df.loc[index_filter, :] if index_filter is not None else df
         if C.KEY_JOB_DESCRIPTION not in df:
             df[C.KEY_JOB_DESCRIPTION] = None
-        for row_id, row in df_temp.iterrows():
+        n_jobs = df_temp.shape[0]
+        for i, (row_id, row) in enumerate(df_temp.iterrows(), start=1):
             descr = self.get_html_job_description(row[C.KEY_JOB_ID])
             df.loc[row_id, C.KEY_JOB_DESCRIPTION] = (
                 descr.prettify() if descr is not None else C.UNKNOWN
             )
+
+            self.update_progress(int(i / n_jobs * 100))
 
         df[C.KEY_HAS_JOB_DESCRIPTION] = ~df[C.KEY_JOB_DESCRIPTION].isnull()
 
@@ -644,7 +698,7 @@ def filter_job_descriptions(
     for row_id, row in df_temp.iterrows():
         if (descr := row[C.KEY_JOB_DESCRIPTION]) is None:
             continue
-        elif descr is not C.UNKNOWN:
+        elif descr != C.UNKNOWN:
             if mark_keywords:
                 contains_keyword, descr = mark_keywords_html(descr, keywords)
                 df.loc[row_id, C.KEY_JOB_DESCRIPTION_MARKED] = descr
@@ -674,6 +728,23 @@ def convert_days_to_sec(n_days: int) -> int:
 
     """
     return n_days * 3600 * 24
+
+
+def ceil_div(n: int, d: int) -> int:
+    """Upside-down floor division.
+
+    See https://stackoverflow.com/questions/14822184/is-there-a-ceiling-equivalent-of-operator-in-python/17511341#17511341
+
+    Parameters
+    ----------
+    n : int
+    d : int
+
+    Returns
+    -------
+    int
+    """
+    return -(n // -d)
 
 
 def contains_keywords(string: str, keywords: Iterable[str]) -> bool:
@@ -728,7 +799,7 @@ def mark_keywords_html(
             string=string_marked,
             flags=re.RegexFlag.IGNORECASE,
         )
-        contains_keyword = contains_keyword | count > 0
+        contains_keyword = contains_keyword | (count > 0)
 
     return contains_keyword, string_marked
 

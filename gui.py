@@ -18,7 +18,8 @@ from PyQt5.QtGui import QIcon, QKeyEvent
 from PyQt5.QtWidgets import (
     QAbstractItemView, QApplication, QCheckBox, QFormLayout, QGroupBox,
     QHBoxLayout, QHeaderView, QLabel, QLineEdit, QMessageBox, QPlainTextEdit,
-    QPushButton, QSizePolicy, QSpinBox, QTableView, QVBoxLayout, QWidget)
+    QProgressDialog, QPushButton, QSizePolicy, QSpinBox, QTableView, QVBoxLayout,
+    QWidget)
 
 import constants as C
 from job_scraper import (
@@ -32,6 +33,7 @@ logger.setLevel(CONN)
 
 SIZE_FIXED = QSizePolicy.Fixed
 SIZE_MIN_EXPANDING = QSizePolicy.MinimumExpanding
+SIZE_MIN = QSizePolicy.Minimum
 
 LABEL_ROLE = QFormLayout.LabelRole
 FIELD_ROLE = QFormLayout.FieldRole
@@ -41,7 +43,10 @@ PATH_ICONS = f"{os.path.dirname(__file__)}\\icons"
 
 class MainWindow(QWidget):
     MIN_WIDTH = 1280
-    MIN_HEIGHT = 720
+    MIN_HEIGHT = 960
+
+    # TODO: where to put this?
+    progress_update_signal = pyqtSignal(int)
 
     class BUTTON_GROUPS(Enum):
         AFTER_INIT = ("test_session", "get_n_jobs", "scrape_jobs")
@@ -56,7 +61,6 @@ class MainWindow(QWidget):
 
     def __init__(
         self,
-        session: LinkedinSession,
         scraper: LinkedinJobScraper,
         save_folder: str,
         *args,
@@ -73,9 +77,11 @@ class MainWindow(QWidget):
         """
         super().__init__(*args, **kwargs)
 
-        self.session: LinkedinSession = session
         self.scraper: LinkedinJobScraper = scraper
+        self.scraper.progress_signal = self.progress_update_signal
+        self.session = scraper.session
         self.worker: Worker = None
+        self.progress_bar: QProgressDialogWithConfirmation = None
         self.save_folder = save_folder
 
         self._l = logger.getChild(self.__class__.__name__)
@@ -101,6 +107,15 @@ class MainWindow(QWidget):
         self.settings_groupbox = QGroupBox("Settings")
         self.settings_groupbox.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
 
+        self.title_filter_groupbox = QGroupBox("Title filter")
+        self.title_filter_groupbox.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
+
+        self.description_filter_groupbox = QGroupBox("Description filter")
+        self.description_filter_groupbox.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
+
+        self.actions_groupbox = QGroupBox("Actions")
+        self.actions_groupbox.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
+
         self.form_settings_layout = FormSettingsLayout(
             setting_params=(
                 C.URL_PARAM_KEYWORDS,
@@ -118,17 +133,17 @@ class MainWindow(QWidget):
         self.work_location_layout = WorkLocationLayout()
         self.title_filter_layouts = {
             "always_keep": FilterKeywordsLayout(
-                "Title keywords to always keep", TITLE_KEYWORDS_TO_ALWAYS_KEEP
+                "Keywords to always keep", TITLE_KEYWORDS_TO_ALWAYS_KEEP
             ),
             "keep": FilterKeywordsLayout(
-                "Title keywords to keep", TITLE_KEYWORDS_TO_KEEP
+                "Keywords to keep", TITLE_KEYWORDS_TO_KEEP
             ),
             "discard": FilterKeywordsLayout(
-                "Title keyword to discard", TITLE_KEYWORDS_TO_DISCARD
+                "Keywords to discard", TITLE_KEYWORDS_TO_DISCARD
             ),
         }
         self.description_filter_input = FilterKeywordsLayout(
-            "Description keywords", DESCRIPTION_KEYWORDS
+            "Keywords", DESCRIPTION_KEYWORDS
         )
         self.mark_descr_keywords_checkbox = QCheckBox(
             "Mark description keywords"
@@ -144,9 +159,9 @@ class MainWindow(QWidget):
             ("test_session", "Test session", self._callback_test_session, True),
             ("get_n_jobs", "Get number of jobs", self._callback_get_n_jobs, True),
             ("scrape_jobs", "Fetch jobs", self._callback_scrape_jobs, True),
-            ("filter_job_titles", "Filter job titles", self._callback_filter_job_titles, False),
+            ("filter_job_titles", "Filter", self._callback_filter_job_titles, False),
             ("get_job_descriptions", "Fetch job descriptions", self._callback_get_job_descriptions, False),
-            ("filter_job_descriptions", "Filter job descriptions", self._callback_filter_job_descriptions, False),
+            ("filter_job_descriptions", "Filter", self._callback_filter_job_descriptions, False),
             ("save_results", "Save results", self._callback_save_results, False),
             ("reset_table_view", "Reset filters", self._callback_reset_table_view, False),
             ("stop_worker", "Stop", self._callback_stop_worker, False),
@@ -165,19 +180,32 @@ class MainWindow(QWidget):
         layout_settings = QVBoxLayout(self.settings_groupbox)
         layout_settings.addLayout(self.form_settings_layout)
         layout_settings.addLayout(self.work_location_layout)
+
+        layout_title_filters = QVBoxLayout(self.title_filter_groupbox)
         for tfl in self.title_filter_layouts.values():
-            layout_settings.addLayout(tfl)
-        layout_settings.addLayout(self.description_filter_input)
-        layout_settings.addWidget(self.mark_descr_keywords_checkbox)
+            layout_title_filters.addLayout(tfl)
+        layout_title_filters.addWidget(self.buttons["filter_job_titles"])
+
+        layout_description_filter = QVBoxLayout(self.description_filter_groupbox)
+        layout_description_filter.addLayout(self.description_filter_input)
+        layout_description_filter.addWidget(self.mark_descr_keywords_checkbox)
+        layout_description_filter.addWidget(self.buttons["filter_job_descriptions"])
+
+        layout_actions = QVBoxLayout(self.actions_groupbox)
+        for button in ("test_session", "get_n_jobs", "scrape_jobs", "get_job_descriptions"):
+            layout_actions.addWidget(self.buttons[button])
 
         layout_l = QVBoxLayout()
         layout_l.addWidget(self.settings_groupbox)
+        layout_l.addWidget(self.title_filter_groupbox)
+        layout_l.addWidget(self.description_filter_groupbox)
         layout_l.addStretch()
-        for button in self.buttons.values():
-            layout_l.addWidget(button)
+        layout_l.addWidget(self.actions_groupbox)
+        layout_l.addWidget(self.buttons["save_results"])
+        layout_l.addWidget(self.buttons["reset_table_view"])
 
-        jobs_groupbox_layout = QVBoxLayout(jobs_groupbox)
-        jobs_groupbox_layout.addWidget(self.job_table)
+        layout_jobs_groupbox = QVBoxLayout(jobs_groupbox)
+        layout_jobs_groupbox.addWidget(self.job_table)
 
         layout.addLayout(layout_l)
         layout.addWidget(jobs_groupbox, 1)
@@ -237,6 +265,9 @@ class MainWindow(QWidget):
             self.scraper.scrape_jobs, **settings_dict
         )
         self.worker.result.connect(self._slot_scrape_jobs_result)
+
+        self.create_progress_window("Fetching jobs...")
+
         self.worker.start()
         self._unlock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
 
@@ -255,6 +286,8 @@ class MainWindow(QWidget):
             self._last_button_states = self.BUTTON_GROUPS.AFTER_SCRAPE
             self._results_saved = False
         else:
+            # TODO: this will also be called if LinkedinSession raised a timeout
+            #  error, which shouldn't be the case
             QMessageBox.information(
                 self, "Fetch jobs", "No jobs available with current settings"
             )
@@ -297,6 +330,9 @@ class MainWindow(QWidget):
             self.scraper.get_job_descriptions, self.df, current_indices
         )
         self.worker.result.connect(self._slot_get_job_descriptions_result)
+
+        self.create_progress_window("Fetching job descriptions...")
+
         self.worker.start()
         self._unlock_buttons(self.BUTTON_GROUPS.WHILE_ACTION)
 
@@ -367,16 +403,6 @@ class MainWindow(QWidget):
         Should only be used in emergencies.
         """
         if self.worker is None or not self.worker.isRunning():
-            return
-
-        mb = question_messagebox(
-            self,
-            "Stop action",
-            "Are you sure you want to stop the current action?",
-        )
-        self.worker.finished.connect(mb.close)
-        res = mb.exec_()
-        if res != QMessageBox.Yes:
             return
 
         # NOTE: normally, threads should be stopped using quit() instead of
@@ -518,6 +544,28 @@ class MainWindow(QWidget):
         button.setSizePolicy(SIZE_MIN_EXPANDING, SIZE_FIXED)
         button.clicked.connect(callback)
         self.buttons[name] = button
+
+    def create_progress_window(self, label_text: str) -> None:
+        """Create progress dialog window and connect relevant signals.
+
+        Parameters
+        ----------
+        label_text : str
+            Text on the window indicating to which action the shown progress
+            belongs.
+        """
+        # TODO: maybe it's better to create one window in _init_ui and use this
+        #  method to connect/disconnect signals, reset the progress bar, and
+        #  show the window. It would be more in line with the design of
+        #  QProgressDialog, which gets hidden upon cancellation or completion
+        self.progress_bar = QProgressDialogWithConfirmation(
+            label_text, "Cancel", 0, 100, parent=self
+        )
+        self.progress_bar.canceled.connect(self._callback_stop_worker)
+        # This is needed to ensure the window is deleted when finished
+        self.worker.finished.connect(self.progress_bar.close)
+        self.scraper.progress_signal.connect(self.progress_bar.setValue)
+        self.progress_bar.show()
 
 
 class Worker(QThread):
@@ -904,6 +952,82 @@ class FilterKeywordsLayout(QVBoxLayout):
         return [w.strip() for w in filter_list if w != ""]
 
 
+class QProgressDialogWithConfirmation(QProgressDialog):
+    """
+    References
+    ----------
+    [1] https://stackoverflow.com/questions/71226523/how-to-intercept-qprogressdialog-cancel-click
+    [2] https://forum.qt.io/topic/78604/how-to-disable-esc-key-close-the-qprogressdialog/11
+    [3] https://doc.qt.io/qt-5/qevent.html#accepted-prop
+    """
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        self.setWindowTitle("Progress")
+
+        # Override Cancel-button functionality
+        button = self.findChild(QPushButton)
+        button.clicked.disconnect()
+        button.clicked.connect(self.cancel)
+
+        # Initialize with 0 progress
+        self.setValue(0)
+
+        # Ensure the widget is deleted (instead of minimized) when closed and
+        # finished
+        self.setAttribute(Qt.WA_DeleteOnClose)
+
+    def cancel(self):
+        """Override cancel to prompt the user with a confirmation about
+        cancelling the action.
+        """
+        res = QMessageBox.question(
+            self,
+            "Stop action",
+            "Are you sure you want to stop the current action?"
+        )
+        if res != QMessageBox.Yes:
+            return
+
+        self.canceled.emit()
+        self.deleteLater()
+        return super().cancel()
+
+    def event(self, a0):
+        """Override event to catch an escape-key press and remove its
+        functionality (closing the window). See [2].
+        """
+        if isinstance(a0, QKeyEvent) and a0.key() == Qt.Key_Escape:
+            # The event should be accepted here to prevent it from being
+            # propagated to the parent class [3].
+            a0.accept()
+            return True
+
+        return super().event(a0)
+
+    # def reject(self):
+    #     # TODO: according to [1], overriding reject should prevent the Esc
+    #     #  button from closing the window. Unfortunately, this is not the case.
+    #     pass
+
+    def closeEvent(self, a0):
+        """Override closeEvent to prompt a confirmation to the user when the 'X'
+        is clicked. See [1].
+        """
+        if a0.spontaneous():
+            a0.ignore()
+            self.cancel()
+            return
+
+        # Close confirmation message box if it is still open
+        messagebox = self.findChild(QMessageBox)
+        if messagebox is not None:
+            messagebox.close()
+
+        return super().closeEvent(a0)
+
+
 def question_messagebox(parent: QWidget, title: str, text: str) -> QMessageBox:
     """Create question QMessageBox.
 
@@ -937,7 +1061,7 @@ def main() -> None:
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(True)
     cwd = os.path.dirname(__file__)
-    widget = MainWindow(session, scraper, f"{cwd}/../results")
+    widget = MainWindow(scraper, f"{cwd}/../results")
     widget.show()
     app.exec_()
 
